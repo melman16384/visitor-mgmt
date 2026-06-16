@@ -203,12 +203,24 @@ if (userCount.c === 0) {
 
 // Remove watchlist table and blacklist columns if they still exist
 db.exec('DROP TABLE IF EXISTS watchlist');
+db.exec('DROP TABLE IF EXISTS parking_spots');
 const visitorsInfoBl = db.prepare("PRAGMA table_info(visitors)").all();
 if (visitorsInfoBl.find(c => c.name === 'blacklisted')) {
   db.exec('ALTER TABLE visitors DROP COLUMN blacklisted');
 }
 if (visitorsInfoBl.find(c => c.name === 'blacklist_reason')) {
   db.exec('ALTER TABLE visitors DROP COLUMN blacklist_reason');
+}
+const visitsInfoPark = db.prepare("PRAGMA table_info(visits)").all();
+if (visitsInfoPark.find(c => c.name === 'license_plate')) {
+  db.exec('ALTER TABLE visits DROP COLUMN license_plate');
+}
+if (visitsInfoPark.find(c => c.name === 'parking_spot')) {
+  db.exec('ALTER TABLE visits DROP COLUMN parking_spot');
+}
+const preregInfoPark = db.prepare("PRAGMA table_info(preregistrations)").all();
+if (preregInfoPark.find(c => c.name === 'license_plate')) {
+  db.exec('ALTER TABLE preregistrations DROP COLUMN license_plate');
 }
 
 module.exports = db;
