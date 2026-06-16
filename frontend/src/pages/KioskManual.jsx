@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle, AlertTriangle } from 'lucide-react';
+import { CheckCircle, AlertTriangle } from 'lucide-react';
 import SignaturePad from '../components/SignaturePad';
+import KioskHeader from '../components/KioskHeader';
 import api from '../api/client';
 import { useKioskLang } from '../context/KioskLangContext';
 
@@ -143,13 +144,7 @@ export default function KioskManual() {
   // ── PRIVACY POLICY ────────────────────────────────────────────────────────
   if (state === 'privacy') return (
     <div key={animKey} className={`${animClass} min-h-screen bg-white flex flex-col`}>
-      <div className="bg-abat-dunkelgrau py-6 px-8 flex items-center gap-4">
-        <button onClick={() => go('form')} className="text-abat-hellgrau hover:text-white transition-colors active:scale-90">
-          <ArrowLeft size={24} />
-        </button>
-        <img src="/logo-light.png" alt="abat AG" className="h-10" />
-        <h1 className="text-white font-bold text-xl ml-2">Datenschutzerklärung</h1>
-      </div>
+      <KioskHeader onBack={() => go('form')} title="Datenschutzerklärung" />
       <div className="flex-1 flex flex-col px-8 py-8 max-w-2xl mx-auto w-full gap-6">
         <div>
           <h2 className="text-xl font-bold text-abat-dunkelgrau mb-1">Datenschutzerklärung lesen & unterschreiben</h2>
@@ -183,13 +178,7 @@ export default function KioskManual() {
 
   return (
     <div key={animKey} className={`${animClass} min-h-screen bg-white flex flex-col`}>
-      <div className="bg-abat-dunkelgrau py-6 px-8 flex items-center gap-4">
-        <button onClick={() => navigate('/kiosk')} className="text-abat-hellgrau hover:text-white transition-colors active:scale-90">
-          <ArrowLeft size={24} />
-        </button>
-        <img src="/logo-light.png" alt="abat AG" className="h-10" />
-        <h1 className="text-white font-bold text-xl ml-2">{t('manualTitle')}</h1>
-      </div>
+      <KioskHeader onBack={() => navigate('/kiosk')} title={t('manualTitle')} />
 
       <div className="flex-1 overflow-y-auto px-8 py-8 max-w-2xl mx-auto w-full">
         <h2 className="text-xl font-bold text-abat-dunkelgrau mb-6">{t('fillForm')}</h2>

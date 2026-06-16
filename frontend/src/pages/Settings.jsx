@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, MapPin, Mail, Key, Save, Check, ListChecks, Users, ShieldCheck, Eye, EyeOff, Printer, Wifi, Clock } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, Edit2, Trash2, MapPin, Mail, Key, Save, Check, ListChecks, Users, ShieldCheck, Eye, EyeOff, Printer, Wifi, Clock, GripVertical } from 'lucide-react';
 import Modal from '../components/Modal';
 import client from '../api/client';
 import { showToast } from '../components/Layout';
@@ -137,6 +137,8 @@ function PurposesTab() {
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({ name: '' });
   const [submitting, setSubmitting] = useState(false);
+  const dragId = useRef(null);
+  const dragOverId = useRef(null);
 
   const load = async () => {
     const res = await client.get('/visit-purposes');
@@ -169,10 +171,36 @@ function PurposesTab() {
     } catch { showToast('Fehler', 'error'); }
   };
 
+  const handleDragStart = (id) => { dragId.current = id; };
+  const handleDragOver = (e, id) => { e.preventDefault(); dragOverId.current = id; };
+
+  const handleDrop = async () => {
+    const from = dragId.current;
+    const to = dragOverId.current;
+    if (!from || !to || from === to) return;
+
+    const reordered = [...purposes];
+    const fromIdx = reordered.findIndex(p => p.id === from);
+    const toIdx = reordered.findIndex(p => p.id === to);
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+
+    const withOrder = reordered.map((p, i) => ({ ...p, sort_order: i }));
+    setPurposes(withOrder);
+    dragId.current = null;
+    dragOverId.current = null;
+
+    try {
+      await client.put('/visit-purposes/reorder', {
+        order: withOrder.map(p => ({ id: p.id, sort_order: p.sort_order })),
+      });
+    } catch { showToast('Reihenfolge konnte nicht gespeichert werden', 'error'); load(); }
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-500">{purposes.length} Besuchszwecke</p>
+        <p className="text-sm text-gray-500">{purposes.length} Besuchszwecke · Reihenfolge per Drag &amp; Drop ändern</p>
         <button onClick={openAdd}
           className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-colors">
           <Plus size={16} /> Zweck hinzufügen
@@ -183,14 +211,23 @@ function PurposesTab() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
             <tr>
-              <th className="text-left px-5 py-3">Bezeichnung</th>
+              <th className="w-8 px-3 py-3"></th>
+              <th className="text-left px-3 py-3">Bezeichnung</th>
               <th className="px-5 py-3"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
             {purposes.map(p => (
-              <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-5 py-4 font-medium text-gray-900">{p.name}</td>
+              <tr key={p.id}
+                draggable
+                onDragStart={() => handleDragStart(p.id)}
+                onDragOver={e => handleDragOver(e, p.id)}
+                onDrop={handleDrop}
+                className="hover:bg-gray-50 transition-colors cursor-default">
+                <td className="pl-3 py-4">
+                  <GripVertical size={16} className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing" />
+                </td>
+                <td className="px-3 py-4 font-medium text-gray-900">{p.name}</td>
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-1 justify-end">
                     <button onClick={() => openEdit(p)}

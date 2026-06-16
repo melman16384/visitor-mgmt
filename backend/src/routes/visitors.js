@@ -81,10 +81,16 @@ router.get('/', authenticate, (req, res) => {
 
   const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
 
+  // For 'all': join most recent visit regardless of status
+  // For 'active': join only active visits (WHERE clause filters further)
+  const visitJoin = status === 'active'
+    ? `LEFT JOIN visits v ON vi.id = v.visitor_id AND v.status = 'active'`
+    : `LEFT JOIN visits v ON v.id = (SELECT id FROM visits WHERE visitor_id = vi.id ORDER BY checked_in_at DESC LIMIT 1)`;
+
   const total = db.prepare(`
     SELECT COUNT(DISTINCT vi.id) as total
     FROM visitors vi
-    LEFT JOIN visits v ON vi.id = v.visitor_id AND v.status = 'active'
+    ${visitJoin}
     LEFT JOIN locations l ON v.location_id = l.id
     ${whereClause}
   `).get(...params).total;
@@ -95,7 +101,7 @@ router.get('/', authenticate, (req, res) => {
       h.name as host_name, h.id as host_id,
       l.name as location_name
     FROM visitors vi
-    LEFT JOIN visits v ON vi.id = v.visitor_id AND v.status = 'active'
+    ${visitJoin}
     LEFT JOIN hosts h ON v.host_id = h.id
     LEFT JOIN locations l ON v.location_id = l.id
     ${whereClause}

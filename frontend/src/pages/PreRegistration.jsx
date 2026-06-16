@@ -211,7 +211,7 @@ export default function PreRegistration() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await client.get('/preregistrations', { params: { date_filter: dateFilter } });
+      const res = await client.get('/preregistrations', { params: { date_filter: dateFilter, status: 'pending' } });
       setItems(res.data);
     } catch {
       showToast('Fehler beim Laden', 'error');

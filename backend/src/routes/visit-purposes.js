@@ -19,6 +19,15 @@ router.post('/', authenticate, (req, res) => {
   res.status(201).json(db.prepare('SELECT * FROM visit_purposes WHERE id = ?').get(result.lastInsertRowid));
 });
 
+// PUT /reorder - must be before /:id to avoid Express matching 'reorder' as an id
+router.put('/reorder', authenticate, (req, res) => {
+  const { order } = req.body;
+  if (!Array.isArray(order)) return res.status(400).json({ error: 'order array erforderlich' });
+  const update = db.prepare('UPDATE visit_purposes SET sort_order = ? WHERE id = ?');
+  db.transaction(() => { order.forEach(({ id, sort_order }) => update.run(sort_order, id)); })();
+  res.json({ ok: true });
+});
+
 // PUT /:id
 router.put('/:id', authenticate, (req, res) => {
   const { name, sort_order } = req.body;

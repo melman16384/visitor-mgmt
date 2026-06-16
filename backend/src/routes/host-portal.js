@@ -59,8 +59,16 @@ router.get('/me', authenticateHost, (req, res) => {
   res.json({ host: hostWithoutHash });
 });
 
-// GET /visitors — aktive + heutige abgeschlossene Besuche beim Gastgeber
+// GET /visitors — upcoming preregistrations + active + all completed visits
 router.get('/visitors', authenticateHost, (req, res) => {
+  const upcoming = db.prepare(`
+    SELECT p.*, l.name as location_name
+    FROM preregistrations p
+    LEFT JOIN locations l ON p.location_id = l.id
+    WHERE p.host_id = ? AND p.status = 'pending'
+    ORDER BY p.expected_date ASC, p.expected_time ASC
+  `).all(req.host.id);
+
   const active = db.prepare(`
     SELECT v.*, vi.first_name, vi.last_name, vi.company, vi.abat_id
     FROM visits v JOIN visitors vi ON v.visitor_id = vi.id
@@ -68,15 +76,14 @@ router.get('/visitors', authenticateHost, (req, res) => {
     ORDER BY v.checked_in_at DESC
   `).all(req.host.id);
 
-  const today = new Date().toISOString().split('T')[0];
   const completed = db.prepare(`
     SELECT v.*, vi.first_name, vi.last_name, vi.company, vi.abat_id
     FROM visits v JOIN visitors vi ON v.visitor_id = vi.id
-    WHERE v.host_id = ? AND v.status = 'completed' AND date(v.checked_in_at) = ?
-    ORDER BY v.checked_out_at DESC LIMIT 20
-  `).all(req.host.id, today);
+    WHERE v.host_id = ? AND v.status = 'completed'
+    ORDER BY v.checked_out_at DESC LIMIT 100
+  `).all(req.host.id);
 
-  res.json({ active, completed });
+  res.json({ upcoming, active, completed });
 });
 
 // GET /preregistrations — kommende Vorregistrierungen des Gastgebers
@@ -148,6 +155,23 @@ router.post('/preregistrations', authenticateHost, async (req, res) => {
   try { log('VORREGISTRIERUNG', req.host.name, `${visitor_first_name} ${visitor_last_name}`); } catch {}
 
   res.status(201).json(prereg);
+});
+
+// PUT /change-password
+router.put('/change-password', authenticateHost, async (req, res) => {
+  const { current_password, new_password } = req.body;
+  if (!current_password || !new_password)
+    return res.status(400).json({ error: 'Aktuelles und neues Passwort erforderlich' });
+  if (new_password.length < 8)
+    return res.status(400).json({ error: 'Neues Passwort muss mindestens 8 Zeichen haben' });
+
+  const host = db.prepare('SELECT * FROM hosts WHERE id = ?').get(req.host.id);
+  if (!host.password_hash || !bcrypt.compareSync(current_password, host.password_hash))
+    return res.status(401).json({ error: 'Aktuelles Passwort ist falsch' });
+
+  const hash = bcrypt.hashSync(new_password, 12);
+  db.prepare('UPDATE hosts SET password_hash = ? WHERE id = ?').run(hash, req.host.id);
+  res.json({ ok: true });
 });
 
 module.exports = router;

@@ -114,11 +114,13 @@ app.use((req, res) => {
 require('./db/database');
 auditCleanup();
 const { scheduleNext } = require('./services/auto-checkout');
+const { scheduleExpiry } = require('./services/prereg-expiry');
 app.listen(PORT, () => {
   console.log(`✓ Besucherverwaltung Backend läuft auf Port ${PORT}`);
   console.log(`  API: http://localhost:${PORT}/api`);
   console.log(`  Umgebung: ${process.env.NODE_ENV || 'development'}`);
   scheduleNext();
+  scheduleExpiry();
 });
 
 module.exports = app;

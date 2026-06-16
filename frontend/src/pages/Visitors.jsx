@@ -359,13 +359,13 @@ export default function Visitors() {
                     <td className="px-6 py-4 text-gray-500">{v.badge_number || '–'}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1 justify-end">
-                        {v.visit_id && (
+                        {v.visit_id && v.visit_status === 'active' && (
                           <button onClick={() => handleBadge(v.id, v.visit_id)}
                             className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Badge herunterladen">
                             <FileText size={15} />
                           </button>
                         )}
-                        {v.visit_id && (
+                        {v.visit_id && v.visit_status === 'active' && (
                           <button onClick={() => handlePrint(v.id, v.visit_id)} disabled={printing === v.visit_id}
                             className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors disabled:opacity-50" title="Badge drucken">
                             <Printer size={15} className={printing === v.visit_id ? 'animate-pulse' : ''} />

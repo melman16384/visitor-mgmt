@@ -1,6 +1,6 @@
 # Besucherverwaltungssystem — Projektdokumentation
 
-> Erstellt: 15. Juni 2026 | Zuletzt aktualisiert: 16. Juni 2026  
+> Erstellt: 15. Juni 2026 | Zuletzt aktualisiert: 16. Juni 2026 (Rev. 2)  
 > Kunde: **abat AG**  
 > Domain: https://visitor.luwilab.work  
 > Server: /opt/visitor-mgmt
@@ -65,12 +65,15 @@ Ein vollständiges, webbasiertes Besucherverwaltungssystem für Unternehmen. Bes
 | Benutzerverwaltung | Anlegen, Bearbeiten, Deaktivieren von Benutzern im Admin (superadmin) |
 | Besuchsgrundauswahl | Konfigurierbare Besuchszwecke im Admin |
 | Auto-Checkout | Automatisches Auschecken aller aktiven Besucher täglich um 19:00 Uhr (konfigurierbar) |
-| Host-Portal | Gastgeber können sich separat einloggen, Besucher einsehen und Vorregistrierungen erstellen |
+| Vorregistrierungs-Ablauf | Abgelaufene Vorregistrierungen werden täglich um 00:05 Uhr automatisch auf `expired` gesetzt |
+| Host-Portal | Gastgeber können sich separat einloggen; Ansicht: Angekündigt / Anwesend / Vergangen; eigenes Passwort ändern |
 | Audit-Log | 90 Tage Aufbewahrung, Tagesprotokoll-Download, Compliance-Bericht als CSV |
 | Superadmin-Löschrechte | Besucher und Vorregistrierungen dauerhaft aus der Datenbank entfernen |
 | Rollenverwaltung | superadmin / admin / receptionist / host |
 | GDPR-Datenlöschung | Automatische Anonymisierung nach konfigurierbaren Tagen |
 | abat AG CI | Logo, Mulish-Schrift, Markenfarben durchgängig |
+| Automatisches DB-Backup | Tägliches SQLite-Backup um 03:00 Uhr via systemd Timer; 30 Tage Aufbewahrung |
+| Besuchszweck-Sortierung | Reihenfolge per Drag & Drop im Admin anpassbar |
 
 ---
 
@@ -146,6 +149,9 @@ Brother QL-820NWB (Etikettendrucker)
 ```
 /opt/visitor-mgmt/
 │
+├── backup.sh                        # SQLite-Backup-Skript (via systemd timer)
+├── backups/                         # Tägliche Backups visitors-YYYY-MM-DD.db (30 Tage)
+│
 ├── backend/
 │   ├── src/
 │   │   ├── db/
@@ -158,22 +164,23 @@ Brother QL-820NWB (Etikettendrucker)
 │   │   │   ├── audit-log.js         # Audit-Log: Dateiliste, Download, Compliance-Bericht
 │   │   │   ├── dashboard.js         # Stats, Chart-Daten, Recent visits
 │   │   │   ├── documents.js         # Dokument-Upload + Unterschrift
-│   │   │   ├── host-portal.js       # Host-Portal: Login, Besucher, Vorregistrierungen
+│   │   │   ├── host-portal.js       # Host-Portal: Login, Besucher, Vorregistrierungen, Passwort ändern
 │   │   │   ├── hosts.js             # CRUD Gastgeber (GET public, ohne password_hash)
 │   │   │   ├── locations.js         # CRUD Standorte
 │   │   │   ├── preregistrations.js  # Vorregistrierung + Batch + QR-Versand
 │   │   │   ├── reports.js           # Berichte, Evakuierung (standortgefiltert), CSV
 │   │   │   ├── settings.js          # System-Settings, GDPR-Cleanup, E-Mail-Test
 │   │   │   ├── users.js             # CRUD Benutzer + Standortzuweisung (superadmin)
-│   │   │   ├── visit-purposes.js    # CRUD Besuchszwecke (GET public)
+│   │   │   ├── visit-purposes.js    # CRUD + Reorder Besuchszwecke (GET public)
 │   │   │   ├── visitors.js          # CRUD Besucher + Check-in (standortgefiltert)
-│   │   │   └── visits.js            # Check-out, Checkout per QR, Namenssuche
+│   │   │   └── visits.js            # Check-out, Checkout per QR (badge_number ODER qr_code)
 │   │   ├── services/
 │   │   │   ├── audit-log.js         # Log-Schreiben, Cleanup (90 Tage), Dateiliste
 │   │   │   ├── auto-checkout.js     # Täglicher Auto-Checkout per setTimeout
 │   │   │   ├── badge.js             # PDF-Badge Generierung (PDFKit, A6 Landscape)
 │   │   │   ├── email.js             # Nodemailer: alle ausgehenden Mails
 │   │   │   ├── label-printer.js     # Brother QL-820NWB RAW TCP Etikettendruck
+│   │   │   ├── prereg-expiry.js     # Tägliche Markierung abgelaufener Vorregistrierungen
 │   │   │   └── qrcode.js            # QR-Code als Buffer oder DataURL
 │   │   └── index.js                 # Express App, Port 3001
 │   ├── data/
@@ -196,6 +203,7 @@ Brother QL-820NWB (Etikettendrucker)
 │   │   │   ├── Sidebar.jsx          # Navigation mit rollenbasierter Filterung
 │   │   │   ├── Modal.jsx
 │   │   │   ├── QRScanner.jsx
+│   │   │   ├── KioskHeader.jsx      # Wiederverwendbarer Kiosk-Header (Zurück, Logo, Sprachumschalter)
 │   │   │   ├── SignaturePad.jsx
 │   │   │   └── DocumentSigning.jsx
 │   │   ├── context/
@@ -299,7 +307,7 @@ Brother QL-820NWB (Etikettendrucker)
 | location_id | INTEGER | FK → locations |
 | purpose | TEXT | Besuchszweck |
 | badge_number | TEXT | Eindeutige Badge-Nummer (B-XXXXX) |
-| qr_code | TEXT | QR-Code-Inhalt |
+| qr_code | TEXT | QR-Code-Inhalt (bei Kiosk-Check-in via Vorregistrierung = Pre-Reg-QR-Code) |
 | checked_in_at | DATETIME | Eincheck-Zeitstempel |
 | checked_out_at | DATETIME | Auscheck-Zeitstempel (NULL = noch anwesend) |
 | notes | TEXT | |
@@ -405,7 +413,7 @@ Standardwerte: Besprechung, Lieferung, Interview, Wartung, Sonstiges
 | Methode | Pfad | Auth | Beschreibung |
 |---|---|---|---|
 | POST | `/visits/:id/checkout` | Ja | Besucher auschecken |
-| POST | `/visits/checkout-by-qr` | **Nein** | Kiosk: Auschecken per Badge-QR |
+| POST | `/visits/checkout-by-qr` | **Nein** | Kiosk: Auschecken per Badge-QR oder Vorregistrierungs-QR |
 | POST | `/visits/checkout-by-abat-id` | **Nein** | Kiosk: Auschecken per abat-ID |
 | GET | `/visits/search-active` | **Nein** | Kiosk: Aktive Besuche nach Name suchen |
 
@@ -440,9 +448,9 @@ Standardwerte: Besprechung, Lieferung, Interview, Wartung, Sonstiges
 |---|---|---|---|
 | POST | `/host-portal/login` | Nein | `{ email, password }` → `{ token, host }` |
 | GET | `/host-portal/me` | Host-Token | Eigene Host-Daten |
-| GET | `/host-portal/visitors` | Host-Token | Aktive + heutige abgeschlossene Besuche |
-| GET | `/host-portal/preregistrations` | Host-Token | Kommende Vorregistrierungen |
-| POST | `/host-portal/preregistrations` | Host-Token | Vorregistrierung erstellen + QR per E-Mail |
+| GET | `/host-portal/visitors` | Host-Token | `{ upcoming, active, completed }` — alle Besuche des Hosts |
+| POST | `/host-portal/preregistrations` | Host-Token | Vorregistrierung erstellen + QR per E-Mail (host_id automatisch gesetzt) |
+| PUT | `/host-portal/change-password` | Host-Token | Eigenes Passwort ändern |
 
 ### Audit-Log (nur superadmin)
 
@@ -465,10 +473,11 @@ Standardwerte: Besprechung, Lieferung, Interview, Wartung, Sonstiges
 
 | Methode | Pfad | Auth | Beschreibung |
 |---|---|---|---|
-| GET | `/visit-purposes` | **Nein** | Alle aktiven Zwecke (für Kiosk) |
+| GET | `/visit-purposes` | **Nein** | Alle aktiven Zwecke, sortiert nach `sort_order` |
 | POST | `/visit-purposes` | Ja | Erstellen |
+| PUT | `/visit-purposes/reorder` | Ja | Reihenfolge aktualisieren `[{id, sort_order}]` |
 | PUT | `/visit-purposes/:id` | Ja | Bearbeiten |
-| DELETE | `/visit-purposes/:id` | Ja | Löschen |
+| DELETE | `/visit-purposes/:id` | Ja | Deaktivieren |
 
 ### Benutzer (nur superadmin)
 
@@ -570,7 +579,7 @@ Zwei Optionen:
 
 ### Mehrsprachigkeit
 
-Der Kiosk unterstützt Deutsch und Englisch. Die Sprache wird per `localStorage` (Key: `kiosk_lang`) gespeichert. Umschalter erscheint im Header der Kiosk-Startseite.
+Der Kiosk unterstützt Deutsch und Englisch. Die Sprache wird per `localStorage` (Key: `kiosk_lang`) gespeichert. Der Sprachumschalter erscheint auf **allen** Kiosk-Seiten rechts oben im Header (via `KioskHeader`-Komponente).
 
 ### Check-in Flow (`/kiosk/checkin`) — Mehrstufig
 
@@ -597,6 +606,12 @@ scan → confirm → privacy → success
 ### Walk-in (`/kiosk/manual`)
 
 Formularfelder: Vorname *, Nachname *, Gastgeber *, Unternehmen, Besuchszweck, Notizen.
+
+### QR-Checkout — Unterstützte Codes
+
+`POST /visits/checkout-by-qr` akzeptiert zwei QR-Code-Typen:
+- **Badge-QR** (aus dem Etikettendrucker): enthält `badge_number` (z.B. `B-12345`) → Suche via `visits.badge_number`
+- **Vorregistrierungs-QR** (aus der Einladungs-E-Mail): enthält `PRE-xxx-yyy` → Suche via `visits.qr_code` (wird beim Check-in gespeichert)
 
 ### QR-Scanner — Technische Besonderheit
 
@@ -745,6 +760,24 @@ Bei jedem Auto-Checkout wird ein `AUTO_CHECKOUT`-Eintrag im Audit-Log geschriebe
 
 ---
 
+## 15a. Vorregistrierungs-Ablauf (Expiry-Job)
+
+Alle `pending`-Vorregistrierungen, deren `expected_date` in der Vergangenheit liegt, werden automatisch auf `expired` gesetzt.
+
+### Funktionsweise
+
+- Implementiert in `backend/src/services/prereg-expiry.js`
+- Läuft beim **Serverstart** (bereinigt sofort ggf. vorhandene Rückstände)
+- Plant sich danach täglich um **00:05 Uhr** neu (via `setTimeout`)
+- Schreibt Änderungsanzahl in die Konsole
+
+### Verhalten im Frontend
+
+- Vorregistrierungsansicht zeigt standardmäßig nur `pending`-Einträge
+- Abgelaufene Einträge erscheinen nicht mehr in der Übersicht
+
+---
+
 ## 16. Host-Portal
 
 Gastgeber erhalten Zugang zu einem separaten Portal unter `/host/login`, ohne dass sie Admin-Zugang benötigen.
@@ -753,8 +786,11 @@ Gastgeber erhalten Zugang zu einem separaten Portal unter `/host/login`, ohne da
 
 | Funktion | Beschreibung |
 |---|---|
-| Meine Besucher | Aktuell anwesende und heute ausgecheckte Besucher in Echtzeit (30 s Refresh) |
-| Vorregistrierung erstellen | Neuen Besuch vorregistrieren, QR-Code wird per E-Mail verschickt |
+| Angekündigt | Ausstehende Vorregistrierungen des Gastgebers |
+| Aktuell anwesend | Eingecheckte Besucher in Echtzeit (30 s Auto-Refresh) |
+| Vergangene Besucher | Alle abgeschlossenen Besuche (bis 100), aufklappbar |
+| Vorregistrierung erstellen | Einzelregistrierung; host_id wird automatisch auf den eingeloggten Gastgeber gesetzt |
+| Passwort ändern | Gastgeber kann sein Portal-Passwort selbst ändern (aktuelles Passwort erforderlich) |
 
 ### Technische Umsetzung
 
@@ -762,6 +798,7 @@ Gastgeber erhalten Zugang zu einem separaten Portal unter `/host/login`, ohne da
 - **Token-Gültigkeit:** 12 Stunden
 - **Gespeichert:** `host_token` in `localStorage`
 - **Middleware:** `authenticateHost()` in `routes/host-portal.js` prüft `type === 'host'`
+- **Link im Admin-Header:** Neben "Kiosk öffnen" — öffnet `/host` in neuem Tab
 
 ### Portal-Passwort einrichten
 

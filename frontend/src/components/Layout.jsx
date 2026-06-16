@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
-import { LogOut, Bell, User, Monitor } from 'lucide-react';
+import { LogOut, Monitor, Users } from 'lucide-react';
 import Sidebar from './Sidebar';
 import { useAuth } from '../context/AuthContext';
 
@@ -66,11 +66,17 @@ export default function Layout() {
               <Monitor size={16} />
               <span>Kiosk öffnen</span>
             </a>
+            <a
+              href="/host"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-sm text-gray-500 hover:text-primary-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-primary-50"
+            >
+              <Users size={16} />
+              <span>Host-Portal</span>
+            </a>
           </div>
           <div className="flex items-center gap-3">
-            <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors relative">
-              <Bell size={18} />
-            </button>
             <div className="flex items-center gap-3 pl-3 border-l border-gray-200">
               <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
                 {user?.name?.charAt(0).toUpperCase()}

@@ -16,8 +16,8 @@ router.post('/checkout-by-qr', (req, res) => {
     FROM visits v
     JOIN visitors vis ON vis.id = v.visitor_id
     LEFT JOIN hosts h ON h.id = v.host_id
-    WHERE v.qr_code = ? AND v.status = 'active'
-  `).get(qr_code);
+    WHERE (v.badge_number = ? OR v.qr_code = ?) AND v.status = 'active'
+  `).get(qr_code, qr_code);
 
   if (!visit) return res.status(404).json({ error: 'Kein aktiver Besuch mit diesem QR-Code gefunden' });
 

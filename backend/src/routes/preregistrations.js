@@ -100,9 +100,9 @@ router.post('/qr/:qrcode/checkin', async (req, res) => {
 
   const badgeNumber = `B-${Date.now().toString().slice(-5)}`;
   const visitResult = db.prepare(`
-    INSERT INTO visits (visitor_id, host_id, location_id, purpose, badge_number, checked_in_at, status, privacy_policy_signed, privacy_policy_signature_path)
-    VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)
-  `).run(visitor.id, prereg.host_id, prereg.location_id, prereg.purpose, badgeNumber, new Date().toISOString(),
+    INSERT INTO visits (visitor_id, host_id, location_id, purpose, badge_number, qr_code, checked_in_at, status, privacy_policy_signed, privacy_policy_signature_path)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)
+  `).run(visitor.id, prereg.host_id, prereg.location_id, prereg.purpose, badgeNumber, prereg.qr_code, new Date().toISOString(),
     signaturePath ? 1 : 0, signaturePath);
 
   db.prepare("UPDATE preregistrations SET status = 'checked_in' WHERE id = ?").run(prereg.id);

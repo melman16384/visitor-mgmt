@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle, Search, AlertTriangle } from 'lucide-react';
+import { CheckCircle, Search, AlertTriangle } from 'lucide-react';
 import QRScanner from '../components/QRScanner';
+import KioskHeader from '../components/KioskHeader';
 import api from '../api/client';
 import { useKioskLang } from '../context/KioskLangContext';
 
@@ -179,13 +180,7 @@ export default function KioskCheckout() {
 
   return (
     <div className="kiosk-fade-up min-h-screen bg-white flex flex-col">
-      <div className="bg-abat-dunkelgrau py-6 px-8 flex items-center gap-4">
-        <button onClick={() => navigate('/kiosk')} className="text-abat-hellgrau hover:text-white transition-colors active:scale-90">
-          <ArrowLeft size={24} />
-        </button>
-        <img src="/logo-light.png" alt="abat AG" className="h-10" />
-        <h1 className="text-white font-bold text-xl ml-2">{t('checkout')}</h1>
-      </div>
+      <KioskHeader onBack={() => navigate('/kiosk')} title={t('checkout')} />
 
       <div className="flex-1 flex flex-col items-center justify-center px-8 py-8 gap-6 max-w-2xl mx-auto w-full">
         {/* Tab switcher */}
