@@ -28,19 +28,24 @@ export default function QRScanner({ onScan, onError, className = '' }) {
       try { scanner.stop().catch(() => {}); } catch (e) {}
     };
 
-    scanner.start(
-      { facingMode: 'user' },
-      { fps: 10, qrbox: { width: 250, height: 250 } },
-      (decodedText) => {
-        safeStop();
+    const startWithFacing = (facingMode) =>
+      scanner.start(
+        { facingMode },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText) => {
+          safeStop();
+          setActive(false);
+          onScan(decodedText);
+        },
+        () => {}
+      );
+
+    startWithFacing('user').catch(() =>
+      startWithFacing('environment').catch(() => {
+        setError('Kamera konnte nicht gestartet werden. Bitte Zugriff erlauben.');
         setActive(false);
-        onScan(decodedText);
-      },
-      () => {}
-    ).catch(() => {
-      setError('Kamera konnte nicht gestartet werden. Bitte Zugriff erlauben.');
-      setActive(false);
-    });
+      })
+    );
 
     return () => {
       safeStop();

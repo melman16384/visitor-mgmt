@@ -58,8 +58,8 @@ router.get('/by-abat-id/:abatId', (req, res) => {
 
 // GET /qr/:qrcode - PUBLIC
 router.get('/qr/:qrcode', (req, res) => {
-  const prereg = db.prepare(`${PREREG_SELECT} WHERE p.qr_code = ? AND p.status IN ('pending', 'expired')`).get(req.params.qrcode);
-  if (!prereg) return res.status(404).json({ error: 'QR-Code nicht gefunden oder bereits verwendet' });
+  const prereg = db.prepare(`${PREREG_SELECT} WHERE p.qr_code = ? AND p.status = 'pending'`).get(req.params.qrcode);
+  if (!prereg) return res.status(404).json({ error: 'QR-Code nicht gefunden, abgelaufen oder bereits verwendet' });
   res.json(prereg);
 });
 
