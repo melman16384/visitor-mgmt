@@ -696,14 +696,14 @@ Speicherorte: `/backend/uploads/documents/` und `/backend/uploads/signatures/`
 
 ## 11. Zugangsdaten & Benutzerrollen
 
-### Produktions-Accounts (abat AG)
+### Accounts
 
-| Name | E-Mail | Passwort | Rolle |
-|---|---|---|---|
-| Administrator | `admin@abat.de` | `REDACTED` | superadmin |
-| Empfang | `empfang@abat.de` | `REDACTED` | receptionist |
+| Name | E-Mail | Rolle |
+|---|---|---|
+| Administrator | `admin@abat.de` | superadmin |
+| Empfang | `empfang@abat.de` | receptionist |
 
-Passwörter sind gespeichert in: `/root/visitor-mgmt-credentials.txt`
+> Zugangsdaten werden separat verwaltet und nicht in der Dokumentation hinterlegt.
 
 ### Rollen & Berechtigungen
 
@@ -1021,16 +1021,16 @@ Cloudflare muss auf **Full (Strict)** SSL gestellt sein.
 
 ```env
 PORT=3001
-JWT_SECRET=REDACTED
+JWT_SECRET=<langer-zufälliger-string>
 DB_PATH=./data/visitors.db
 
-SMTP_HOST=smtp.gmail.com
+SMTP_HOST=<smtp-server>
 SMTP_PORT=587
-SMTP_USER=your@email.com
-SMTP_PASS=your-app-password
+SMTP_USER=<smtp-benutzer>
+SMTP_PASS=<smtp-passwort>
 SMTP_SECURITY=starttls
-FROM_EMAIL=noreply@abat.de
-COMPANY_NAME=abat AG
+FROM_EMAIL=<absender@firma.de>
+COMPANY_NAME=<firmenname>
 ```
 
 | Variable | Pflicht | Beschreibung |
@@ -1086,7 +1086,7 @@ curl http://localhost:3001/api/health
 # Login
 curl -X POST http://localhost:3001/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@abat.de","password":"REDACTED"}'
+  -d '{"email":"admin@abat.de","password":"<passwort>"}'
 
 # Systemeinstellungen (mit Token)
 TOKEN="<JWT-Token>"
