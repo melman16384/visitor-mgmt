@@ -29,7 +29,7 @@ export default function QRScanner({ onScan, onError, className = '' }) {
     };
 
     scanner.start(
-      { facingMode: 'environment' },
+      { facingMode: 'user' },
       { fps: 10, qrbox: { width: 250, height: 250 } },
       (decodedText) => {
         safeStop();
