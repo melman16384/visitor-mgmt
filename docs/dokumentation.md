@@ -23,19 +23,22 @@
 12. [Standortbasierte Zugriffskontrolle](#12-standortbasierte-zugriffskontrolle)
 13. [Badge-Drucker (Brother QL-820NWB)](#13-badge-drucker-brother-ql-820nwb)
 14. [E-Mail-System](#14-e-mail-system)
-15. [GDPR & Datenschutz](#15-gdpr--datenschutz)
-16. [Infrastruktur & Deployment](#16-infrastruktur--deployment)
-17. [SSL & Cloudflare](#17-ssl--cloudflare)
-18. [Umgebungsvariablen (.env)](#18-umgebungsvariablen-env)
-19. [Wichtige Befehle](#19-wichtige-befehle)
-20. [Fehlerbehebung](#20-fehlerbehebung)
-21. [Docker-Deployment](#21-docker-deployment)
+15. [Auto-Checkout](#15-auto-checkout)
+16. [Host-Portal](#16-host-portal)
+17. [Audit-Log & Compliance](#17-audit-log--compliance)
+18. [Sicherheit](#18-sicherheit)
+19. [GDPR & Datenschutz](#19-gdpr--datenschutz)
+20. [Infrastruktur & Deployment](#20-infrastruktur--deployment)
+21. [SSL & Cloudflare](#21-ssl--cloudflare)
+22. [Umgebungsvariablen (.env)](#22-umgebungsvariablen-env)
+23. [Wichtige Befehle](#23-wichtige-befehle)
+24. [Fehlerbehebung](#24-fehlerbehebung)
 
 ---
 
 ## 1. Projektübersicht
 
-Ein vollständiges, webbasiertes Besucherverwaltungssystem für Unternehmen. Besucher können am Empfang oder per Kiosk-Modus ein- und ausgecheckt werden. Das System unterstützt Vorregistrierungen, Badge-Druck (PDF + Etikettendrucker), Evakuierungslisten, Berichte und standortbasierte Zugriffskontrolle.
+Ein vollständiges, webbasiertes Besucherverwaltungssystem für Unternehmen. Besucher können am Empfang oder per Kiosk-Modus ein- und ausgecheckt werden. Das System unterstützt Vorregistrierungen, Badge-Druck (PDF + Etikettendrucker), Evakuierungslisten, Berichte, standortbasierte Zugriffskontrolle, ein Gastgeber-Portal sowie ein Audit-Log für Compliance-Anforderungen.
 
 ### Features im Überblick
 
@@ -44,27 +47,29 @@ Ein vollständiges, webbasiertes Besucherverwaltungssystem für Unternehmen. Bes
 | Check-in / Check-out | Walk-in, Kamera-QR-Scan oder Vorregistrierung; auch manuell im Dashboard |
 | Vorregistrierung | Gastgeber kann Besucher voranmelden, QR-Code per E-Mail; Gruppenregistrierung |
 | QR-Code Vorregistrierung | Server-seitig generiert (kein externer Dienst), Anzeige im Admin-Modal |
-| Badge-Generierung | A6-PDF (Landscape) mit Name, Firma, Gastgeber, QR-Code, Parkplatz |
+| Badge-Generierung | A6-PDF (Landscape) mit Name, Firma, Gastgeber, QR-Code |
 | Badge-Drucker | Brother QL-820NWB über IP (RAW TCP Port 9100), DK-11202 (62×100 mm) |
-| abat-ID | Permanente Besucher-ID im Format `ABAT-########` (8 Ziffern, einzigartig); in E-Mail + Kiosk-Erfolgsscreen |
-| Kiosk-Modus | 3 Optionen: Einchecken, Auschecken, Erstanmeldung — kein Login nötig |
+| abat-ID | Permanente Besucher-ID im Format `ABAT-########`; in E-Mail + Kiosk-Erfolgsscreen |
+| Kiosk-Modus | 2 Optionen: Einchecken, Auschecken — kein Login nötig |
 | Kiosk Check-in Flow | Mehrstufig: QR-Scan oder abat-ID → Daten bestätigen → Datenschutz unterschreiben → Erfolg |
 | Datenschutzerklärung | Unterschrift am Kiosk mit Finger/Stift (signature_pad); Text konfigurierbar im Admin |
 | Mehrsprachiger Kiosk | Deutsch / Englisch, umschaltbar per Sprachbutton |
-| Kennzeichen & Parkplatz | Kennzeichen und Parkplatz bei Check-in und Vorregistrierung erfassbar |
-| Kamera-QR-Scanner | Echter Kamera-Scan (kein manuelles Eingeben); robuster Stop-Guard verhindert Doppel-Stop-Fehler |
+| Kamera-QR-Scanner | Echter Kamera-Scan; robuster Stop-Guard verhindert Doppel-Stop-Fehler |
 | Dokumenten-Upload | PDF/DOC hochladen + digitale Unterschrift (Canvas) |
 | Evakuierungsliste | Echtzeit, nach Standort gruppiert, druckoptimiert, 30 s Auto-Refresh |
 | Berichte & Export | Tages-/Monatsberichte, CSV-Export |
 | E-Mail-Benachrichtigungen | Gastgeber bei Ankunft, Besucher Check-in-Bestätigung, QR-Code bei Vorregistrierung |
-| E-Mail-Test | Test-E-Mail über konfigurierte SMTP-Einstellungen direkt aus dem Admin |
 | SMTP-Verschlüsselung | STARTTLS / SSL/TLS / Keine — konfigurierbar im Admin |
 | Mehrere Standorte | Unterstützung für mehrere Firmenstandorte |
 | Standortbasierte Zugriffskontrolle | Empfang-Benutzer können auf bestimmte Standorte beschränkt werden |
 | Benutzerverwaltung | Anlegen, Bearbeiten, Deaktivieren von Benutzern im Admin (superadmin) |
-| Besuchsgrundauswahl | Konfigurierbare Besuchszwecke im Admin (wie Standorte / Gastgeber) |
-| Parkplatzverwaltung | Parkplätze anlegen, Belegungsstatus in Echtzeit |
-| Rollenverwaltung | superadmin / admin / receptionist |
+| Besuchsgrundauswahl | Konfigurierbare Besuchszwecke im Admin |
+| Auto-Checkout | Automatisches Auschecken aller aktiven Besucher täglich um 19:00 Uhr (konfigurierbar) |
+| Host-Portal | Gastgeber können sich separat einloggen, Besucher einsehen und Vorregistrierungen erstellen |
+| Audit-Log | 90 Tage Aufbewahrung, Tagesprotokoll-Download, Compliance-Bericht als CSV |
+| Superadmin-Löschrechte | Besucher und Vorregistrierungen dauerhaft aus der Datenbank entfernen |
+| Sperrliste | Gesperrte Personen verwalten (Watchlist) |
+| Rollenverwaltung | superadmin / admin / receptionist / host |
 | GDPR-Datenlöschung | Automatische Anonymisierung nach konfigurierbaren Tagen |
 | abat AG CI | Logo, Mulish-Schrift, Markenfarben durchgängig |
 
@@ -109,11 +114,11 @@ Cloudflare Proxy (SSL-Terminierung zum User)
    ▼
 Nginx (Reverse Proxy)
    ├── /           → /opt/visitor-mgmt/frontend/dist  (React SPA)
-   ├── /api/       → http://127.0.0.1:3001            (Node.js Backend)
-   └── /uploads/   → http://127.0.0.1:3001            (Besucherfotos)
-   
+   └── /api/       → http://127.0.0.1:3001            (Node.js Backend)
+
 Node.js Backend (Port 3001)
-   └── better-sqlite3 → /opt/visitor-mgmt/backend/data/visitors.db
+   ├── better-sqlite3 → /opt/visitor-mgmt/backend/data/visitors.db
+   └── Logs           → /opt/visitor-mgmt/logs/audit-YYYY-MM-DD.log
 
 Brother QL-820NWB (Etikettendrucker)
    └── RAW TCP Port 9100 (im lokalen Netzwerk erreichbar)
@@ -122,8 +127,9 @@ Brother QL-820NWB (Etikettendrucker)
 **Tech Stack:**
 - **Frontend:** React 18 + Vite + Tailwind CSS + Mulish Font
 - **Backend:** Node.js + Express.js
-- **Datenbank:** SQLite (better-sqlite3)
-- **Auth:** JWT (JSON Web Tokens, 8h Gültigkeit)
+- **Datenbank:** SQLite (better-sqlite3, WAL-Modus)
+- **Auth:** JWT (JSON Web Tokens) — Admin-Token: 8h, Host-Token: 12h
+- **Sicherheit:** helmet (HTTP-Header), express-rate-limit (Brute-Force-Schutz)
 - **PDF:** PDFKit (Badge-Generierung A6 Landscape)
 - **Etikettendruck:** canvas + net.Socket (Brother QL Raster Protocol)
 - **QR-Codes:** qrcode (Generierung) + html5-qrcode (Kamera-Scanner)
@@ -150,71 +156,77 @@ Brother QL-820NWB (Etikettendrucker)
 │   │   │   └── auth.js              # JWT-Middleware, requireRole(), location_ids laden
 │   │   ├── routes/
 │   │   │   ├── auth.js              # Login, /me, Passwort ändern
+│   │   │   ├── audit-log.js         # Audit-Log: Dateiliste, Download, Compliance-Bericht
 │   │   │   ├── dashboard.js         # Stats, Chart-Daten, Recent visits
+│   │   │   ├── documents.js         # Dokument-Upload + Unterschrift
+│   │   │   ├── host-portal.js       # Host-Portal: Login, Besucher, Vorregistrierungen
+│   │   │   ├── hosts.js             # CRUD Gastgeber (GET public, ohne password_hash)
+│   │   │   ├── locations.js         # CRUD Standorte
+│   │   │   ├── preregistrations.js  # Vorregistrierung + Batch + QR-Versand
+│   │   │   ├── reports.js           # Berichte, Evakuierung (standortgefiltert), CSV
+│   │   │   ├── settings.js          # System-Settings, GDPR-Cleanup, E-Mail-Test
+│   │   │   ├── users.js             # CRUD Benutzer + Standortzuweisung (superadmin)
+│   │   │   ├── visit-purposes.js    # CRUD Besuchszwecke (GET public)
 │   │   │   ├── visitors.js          # CRUD Besucher + Check-in (standortgefiltert)
 │   │   │   ├── visits.js            # Check-out, Checkout per QR, Namenssuche
-│   │   │   ├── documents.js         # Dokument-Upload + Unterschrift
-│   │   │   ├── hosts.js             # CRUD Gastgeber (GET public)
-│   │   │   ├── preregistrations.js  # Vorregistrierung + Batch + QR-Versand
-│   │   │   ├── locations.js         # CRUD Standorte
-│   │   │   ├── visit-purposes.js    # CRUD Besuchszwecke (GET public)
-│   │   │   ├── parking.js           # CRUD Parkplätze + Belegungsstatus (GET public)
-│   │   │   ├── users.js             # CRUD Benutzer + Standortzuweisung (superadmin)
-│   │   │   ├── settings.js          # System-Settings, GDPR-Cleanup, E-Mail-Test
-│   │   │   ├── reports.js           # Berichte, Evakuierung (standortgefiltert), CSV
 │   │   │   └── watchlist.js         # CRUD Sperrliste
 │   │   ├── services/
+│   │   │   ├── audit-log.js         # Log-Schreiben, Cleanup (90 Tage), Dateiliste
+│   │   │   ├── auto-checkout.js     # Täglicher Auto-Checkout per setTimeout
 │   │   │   ├── badge.js             # PDF-Badge Generierung (PDFKit, A6 Landscape)
+│   │   │   ├── email.js             # Nodemailer: alle ausgehenden Mails
 │   │   │   ├── label-printer.js     # Brother QL-820NWB RAW TCP Etikettendruck
-│   │   │   ├── qrcode.js            # QR-Code als Buffer oder DataURL
-│   │   │   └── email.js             # Nodemailer: alle ausgehenden Mails
+│   │   │   └── qrcode.js            # QR-Code als Buffer oder DataURL
 │   │   └── index.js                 # Express App, Port 3001
 │   ├── data/
 │   │   └── visitors.db              # SQLite-Datenbank (NICHT löschen!)
 │   ├── uploads/
-│   │   ├── documents/               # Hochgeladene Dokumente (PDF/DOC)
-│   │   └── signatures/              # Unterschriften als PNG
+│   │   ├── documents/               # Hochgeladene Dokumente (PDF/DOC) — auth-geschützt
+│   │   └── signatures/              # Unterschriften als PNG — auth-geschützt
 │   ├── .env                         # Produktionskonfiguration
 │   └── package.json
 │
-└── frontend/
-    ├── public/
-    │   ├── logo-dark.png
-    │   ├── logo-light.png
-    │   └── fonts/
-    ├── src/
-    │   ├── api/client.js            # Axios-Instanz, 401-Redirect (kiosk-aware)
-    │   ├── components/
-    │   │   ├── Layout.jsx
-    │   │   ├── Sidebar.jsx          # Navigation (ohne Sperrliste)
-    │   │   ├── Modal.jsx
-    │   │   ├── QRScanner.jsx
-    │   │   ├── SignaturePad.jsx
-    │   │   └── DocumentSigning.jsx
-    │   ├── context/
-    │   │   ├── AuthContext.jsx
-    │   │   └── KioskLangContext.jsx  # DE/EN Übersetzungen für Kiosk
-    │   └── pages/
-    │       ├── Login.jsx
-    │       ├── Dashboard.jsx
-    │       ├── Visitors.jsx         # Tabs: Alle / Angekündigt / Aktiv / Verlassen
-    │       ├── KioskStart.jsx       # Mit Sprachschalter DE/EN
-    │       ├── KioskCheckin.jsx
-    │       ├── KioskCheckout.jsx
-    │       ├── KioskManual.jsx      # Mit Kennzeichen + Parkplatz
-    │       ├── Hosts.jsx
-    │       ├── PreRegistration.jsx  # Mit Gruppenregistrierung + Kennzeichen
-    │       ├── Evacuation.jsx       # Nach Standort gruppiert, druckoptimiert
-    │       ├── Reports.jsx
-    │       ├── Watchlist.jsx        # Sperrliste (gesperrte Personen)
-    │       └── Settings.jsx         # Standorte, Besuchszwecke, Parkplätze,
-    │                                #  Benutzer, Etikettendrucker, Datenschutz,
-    │                                #  E-Mail (inkl. Verschlüsselung + Test)
-    ├── dist/                        # Produktions-Build
-    └── package.json
+├── frontend/
+│   ├── public/
+│   │   ├── logo-dark.png
+│   │   ├── logo-light.png
+│   │   └── fonts/
+│   ├── src/
+│   │   ├── api/client.js            # Axios-Instanz, 401-Redirect (kiosk-aware)
+│   │   ├── components/
+│   │   │   ├── Layout.jsx
+│   │   │   ├── Sidebar.jsx          # Navigation mit rollenbasierter Filterung
+│   │   │   ├── Modal.jsx
+│   │   │   ├── QRScanner.jsx
+│   │   │   ├── SignaturePad.jsx
+│   │   │   └── DocumentSigning.jsx
+│   │   ├── context/
+│   │   │   ├── AuthContext.jsx
+│   │   │   └── KioskLangContext.jsx  # DE/EN Übersetzungen für Kiosk
+│   │   └── pages/
+│   │       ├── AuditLog.jsx         # Audit-Log & Compliance (superadmin)
+│   │       ├── Dashboard.jsx
+│   │       ├── Evacuation.jsx       # Nach Standort gruppiert, druckoptimiert
+│   │       ├── HostLogin.jsx        # Gastgeber-Portal Login (kein Admin-Zugang)
+│   │       ├── HostPortal.jsx       # Gastgeber-Portal (Besucher + Vorregistrierung)
+│   │       ├── Hosts.jsx
+│   │       ├── KioskCheckin.jsx
+│   │       ├── KioskCheckout.jsx
+│   │       ├── KioskManual.jsx
+│   │       ├── KioskStart.jsx       # Mit Sprachschalter DE/EN
+│   │       ├── Login.jsx
+│   │       ├── NotFound.jsx         # 404-Fehlerseite
+│   │       ├── PreRegistration.jsx  # Mit Gruppenregistrierung
+│   │       ├── Reports.jsx
+│   │       ├── Settings.jsx
+│   │       ├── Visitors.jsx         # Tabs: Alle / Angekündigt / Aktiv / Verlassen
+│   │       └── Watchlist.jsx        # Sperrliste
+│   ├── dist/                        # Produktions-Build
+│   └── package.json
+│
+└── logs/
+    └── audit-YYYY-MM-DD.log         # Tägliche Audit-Protokolle (90 Tage Aufbewahrung)
 ```
-
-> **Hinweis:** Außerdem existiert `docs/` im Projekt-Root mit dieser Dokumentation und der Installationsanleitung sowie `assets/` mit Schriftart und Logos.
 
 ---
 
@@ -242,7 +254,7 @@ Brother QL-820NWB (Etikettendrucker)
 | user_id | INTEGER PK | FK → users (CASCADE DELETE) |
 | location_id | INTEGER PK | FK → locations (CASCADE DELETE) |
 
-> Kein Eintrag = Benutzer sieht alle Standorte. Mit Einträgen: nur zugewiesene Standorte.
+> Kein Eintrag = Benutzer sieht alle Standorte.
 
 #### `locations` — Standorte
 | Spalte | Typ | Beschreibung |
@@ -258,17 +270,20 @@ Brother QL-820NWB (Etikettendrucker)
 |---|---|---|
 | id | INTEGER PK | |
 | name | TEXT | |
-| email | TEXT | Für Benachrichtigungen |
+| email | TEXT | Für Benachrichtigungen und Portal-Login |
 | phone | TEXT | |
 | department | TEXT | Abteilung |
 | location_id | INTEGER | FK → locations |
+| password_hash | TEXT | bcrypt Hash (cost 12) — nur wenn Host-Portal aktiviert |
 | active | INTEGER | Soft-Delete |
+
+> `password_hash` wird **nicht** über die öffentliche API zurückgegeben.
 
 #### `visitors` — Besucherstammdaten
 | Spalte | Typ | Beschreibung |
 |---|---|---|
 | id | INTEGER PK | |
-| abat_id | TEXT UNIQUE | Permanente Besucher-ID, Format `ABAT-########` (8 Ziffern) |
+| abat_id | TEXT UNIQUE | Permanente Besucher-ID, Format `ABAT-########` |
 | first_name | TEXT | |
 | last_name | TEXT | |
 | email | TEXT | |
@@ -277,8 +292,6 @@ Brother QL-820NWB (Etikettendrucker)
 | nda_signed | INTEGER | 0 / 1 |
 | nda_signed_at | DATETIME | |
 | created_at | DATETIME | |
-
-> `abat_id` wird beim ersten Check-in automatisch generiert (einzigartiger Index `idx_visitors_abat_id`). Bestehende Besucher erhalten beim ersten Serverstart nach dem Update eine ID per Backfill.
 
 #### `visits` — Einzelne Besuche
 | Spalte | Typ | Beschreibung |
@@ -290,15 +303,12 @@ Brother QL-820NWB (Etikettendrucker)
 | purpose | TEXT | Besuchszweck |
 | badge_number | TEXT | Eindeutige Badge-Nummer (B-XXXXX) |
 | qr_code | TEXT | QR-Code-Inhalt |
-| checked_in_at | DATETIME | |
-| checked_out_at | DATETIME | NULL wenn noch anwesend |
-| expected_checkout | DATETIME | |
+| checked_in_at | DATETIME | Eincheck-Zeitstempel |
+| checked_out_at | DATETIME | Auscheck-Zeitstempel (NULL = noch anwesend) |
 | notes | TEXT | |
 | status | TEXT | `active` / `completed` |
-| license_plate | TEXT | Kennzeichen (optional) |
-| parking_spot | TEXT | Parkplatznummer (optional) |
 | privacy_policy_signed | INTEGER | 0 / 1 — Datenschutzerklärung unterzeichnet |
-| privacy_policy_signature_path | TEXT | Dateiname der Unterschrift-PNG in `/uploads/signatures/` |
+| privacy_policy_signature_path | TEXT | Dateiname der Unterschrift-PNG |
 
 #### `preregistrations` — Vorregistrierungen
 | Spalte | Typ | Beschreibung |
@@ -310,13 +320,12 @@ Brother QL-820NWB (Etikettendrucker)
 | visitor_company | TEXT | |
 | host_id | INTEGER | FK → hosts |
 | location_id | INTEGER | |
-| expected_date | DATE | |
-| expected_time | TIME | |
+| expected_date | DATE | Erwartetes Anreisedatum |
+| expected_time | TIME | Erwartete Anreisezeit |
 | purpose | TEXT | |
 | qr_code | TEXT UNIQUE | |
 | status | TEXT | `pending` / `checked_in` / `expired` / `cancelled` |
 | notes | TEXT | |
-| license_plate | TEXT | Kennzeichen (optional) |
 | group_id | TEXT | Gruppen-ID bei Sammelregistrierung (optional) |
 
 #### `visit_purposes` — Besuchszwecke (konfigurierbar)
@@ -329,14 +338,6 @@ Brother QL-820NWB (Etikettendrucker)
 
 Standardwerte: Besprechung, Lieferung, Interview, Wartung, Sonstiges
 
-#### `parking_spots` — Parkplätze
-| Spalte | Typ | Beschreibung |
-|---|---|---|
-| id | INTEGER PK | |
-| name | TEXT UNIQUE | z.B. "P1", "Tiefgarage A" |
-| sort_order | INTEGER | |
-| active | INTEGER | |
-
 #### `system_settings` — Systemkonfiguration (key/value)
 | Key | Standardwert | Beschreibung |
 |---|---|---|
@@ -346,19 +347,34 @@ Standardwerte: Besprechung, Lieferung, Interview, Wartung, Sonstiges
 | `printer_ip` | `` | IP-Adresse des Brother QL-820NWB |
 | `printer_port` | `9100` | TCP-Port des Druckers |
 | `smtp_security` | `starttls` | SMTP-Verschlüsselung: `starttls` / `ssl` / `none` |
-| `privacy_policy_text` | *(Platzhaltertext)* | Datenschutztext — im Kiosk angezeigt und zur Unterschrift vorgelegt |
-| `privacy_policy_enabled` | `true` | Datenschutz-Unterschrift im Kiosk aktivieren / deaktivieren |
+| `privacy_policy_text` | *(Platzhaltertext)* | Datenschutztext — im Kiosk angezeigt |
+| `privacy_policy_enabled` | `true` | Datenschutz-Unterschrift im Kiosk aktivieren |
+| `auto_checkout_enabled` | `true` | Auto-Checkout täglich aktivieren |
+| `auto_checkout_time` | `19:00` | Uhrzeit des Auto-Checkouts (HH:MM) |
 
 #### `visit_documents` — Hochgeladene Dokumente & Unterschriften
 | Spalte | Typ | Beschreibung |
 |---|---|---|
 | id | INTEGER PK | |
 | visit_id | INTEGER | FK → visits |
-| filename | TEXT | Gespeicherter Dateiname (UUID-basiert) |
+| filename | TEXT | Gespeicherter Dateiname (zufällig generiert) |
 | original_name | TEXT | Originaler Dateiname |
 | document_type | TEXT | `nda` / `sonstiges` |
 | signature_path | TEXT | PNG-Dateiname in `/uploads/signatures/` |
 | signed_at | DATETIME | |
+
+#### `watchlist` — Sperrliste
+| Spalte | Typ | Beschreibung |
+|---|---|---|
+| id | INTEGER PK | |
+| first_name | TEXT | |
+| last_name | TEXT | |
+| email | TEXT | |
+| company | TEXT | |
+| reason | TEXT | Sperrgrund |
+| severity | TEXT | `low` / `medium` / `high` |
+| added_by | INTEGER | FK → users |
+| active | INTEGER | Soft-Delete |
 
 ---
 
@@ -366,9 +382,10 @@ Standardwerte: Besprechung, Lieferung, Interview, Wartung, Sonstiges
 
 **Base URL:** `https://visitor.luwilab.work/api`  
 **Auth:** `Authorization: Bearer <JWT-Token>` (außer explizit als öffentlich markiert)  
-**Token-Gültigkeit:** 8 Stunden
+**Admin-Token:** 8 Stunden Gültigkeit  
+**Host-Token:** 12 Stunden Gültigkeit (`{ type: 'host', hostId }`)
 
-### Authentifizierung
+### Authentifizierung (Admin)
 
 | Methode | Pfad | Auth | Beschreibung |
 |---|---|---|---|
@@ -384,15 +401,16 @@ Standardwerte: Besprechung, Lieferung, Interview, Wartung, Sonstiges
 | GET | `/dashboard/recent` | Letzte 10 Besuche |
 | GET | `/dashboard/chart` | Besuche pro Tag, letzte 14 Tage |
 
-### Besucher (standortgefiltert für Receptionist)
+### Besucher
 
 | Methode | Pfad | Auth | Beschreibung |
 |---|---|---|---|
-| GET | `/visitors` | Ja | Liste (?search=, ?status=, ?page=) — gefiltert |
+| GET | `/visitors` | Ja | Liste (?search=, ?status=) — standortgefiltert |
 | POST | `/visitors` | **Nein** | Neu erstellen + einchecken (Kiosk-kompatibel) |
-| GET | `/visitors/active` | Ja | Aktuell anwesend — gefiltert |
+| GET | `/visitors/active` | Ja | Aktuell anwesend |
 | GET | `/visitors/:id` | Ja | Details + Besuchshistorie |
 | PUT | `/visitors/:id` | Ja | Stammdaten bearbeiten |
+| DELETE | `/visitors/:id` | Ja (superadmin) | Dauerhaft löschen (inkl. Besuche + Dokumente) |
 | POST | `/visitors/:id/checkin` | Ja | Erneut einchecken |
 | GET | `/visitors/:id/badge/:visitId` | Ja | Badge als PDF |
 | POST | `/visitors/:id/print-badge/:visitId` | Ja | Badge an Etikettendrucker senden |
@@ -404,7 +422,7 @@ Standardwerte: Besprechung, Lieferung, Interview, Wartung, Sonstiges
 |---|---|---|---|
 | POST | `/visits/:id/checkout` | Ja | Besucher auschecken |
 | POST | `/visits/checkout-by-qr` | **Nein** | Kiosk: Auschecken per Badge-QR |
-| POST | `/visits/checkout-by-abat-id` | **Nein** | Kiosk: Auschecken per abat-ID `{ abat_id }` |
+| POST | `/visits/checkout-by-abat-id` | **Nein** | Kiosk: Auschecken per abat-ID |
 | GET | `/visits/search-active` | **Nein** | Kiosk: Aktive Besuche nach Name suchen |
 
 ### Vorregistrierungen
@@ -413,22 +431,42 @@ Standardwerte: Besprechung, Lieferung, Interview, Wartung, Sonstiges
 |---|---|---|---|
 | GET | `/preregistrations` | Ja | Liste (?date_filter=, ?status=) |
 | POST | `/preregistrations` | Ja | Einzelne Vorregistrierung + QR per E-Mail |
-| POST | `/preregistrations/batch` | Ja | Gruppenregistrierung (mehrere Gäste, gemeinsame group_id) |
+| POST | `/preregistrations/batch` | Ja | Gruppenregistrierung (mehrere Gäste) |
 | PUT | `/preregistrations/:id` | Ja | Bearbeiten |
-| DELETE | `/preregistrations/:id` | Ja | Stornieren |
-| GET | `/preregistrations/qr-image/:qrcode` | **Nein** | QR-Code als PNG-Bild (server-seitig generiert) |
+| DELETE | `/preregistrations/:id` | Ja | Superadmin: dauerhaft löschen; andere: stornieren |
+| GET | `/preregistrations/qr-image/:qrcode` | **Nein** | QR-Code als PNG-Bild |
 | GET | `/preregistrations/qr/:qrcode` | **Nein** | Kiosk: Infos via QR-Code |
-| POST | `/preregistrations/qr/:qrcode/checkin` | **Nein** | Kiosk: Einchecken via QR (+ optionale Unterschrift und korrigierte Daten) |
-| GET | `/preregistrations/by-abat-id/:abatId` | **Nein** | Kiosk: Vorregistrierung per abat-ID abrufen |
+| POST | `/preregistrations/qr/:qrcode/checkin` | **Nein** | Kiosk: Einchecken via QR |
+| GET | `/preregistrations/by-abat-id/:abatId` | **Nein** | Kiosk: Vorregistrierung per abat-ID |
 
 ### Gastgeber
 
 | Methode | Pfad | Auth | Beschreibung |
 |---|---|---|---|
-| GET | `/hosts` | **Nein** | Liste (öffentlich für Kiosk) |
+| GET | `/hosts` | **Nein** | Liste (öffentlich für Kiosk, ohne password_hash) |
+| GET | `/hosts/:id` | Ja | Einzelner Gastgeber |
 | POST | `/hosts` | Ja | Erstellen |
 | PUT | `/hosts/:id` | Ja | Bearbeiten |
+| PUT | `/hosts/:id/set-password` | Ja (superadmin) | Portal-Passwort setzen (min. 8 Zeichen) |
 | DELETE | `/hosts/:id` | Ja | Soft-Delete |
+
+### Host-Portal
+
+| Methode | Pfad | Auth | Beschreibung |
+|---|---|---|---|
+| POST | `/host-portal/login` | Nein | `{ email, password }` → `{ token, host }` |
+| GET | `/host-portal/me` | Host-Token | Eigene Host-Daten |
+| GET | `/host-portal/visitors` | Host-Token | Aktive + heutige abgeschlossene Besuche |
+| GET | `/host-portal/preregistrations` | Host-Token | Kommende Vorregistrierungen |
+| POST | `/host-portal/preregistrations` | Host-Token | Vorregistrierung erstellen + QR per E-Mail |
+
+### Audit-Log (nur superadmin)
+
+| Methode | Pfad | Beschreibung |
+|---|---|---|
+| GET | `/audit-log/available-dates` | Liste aller Tage mit vorhandenen Log-Dateien |
+| GET | `/audit-log/download?date=YYYY-MM-DD` | Tagesprotokoll als `.log`-Datei herunterladen |
+| GET | `/audit-log/compliance-report?from=&to=` | Compliance-Bericht als CSV (Besuche + Ereignisse) |
 
 ### Standorte
 
@@ -448,15 +486,6 @@ Standardwerte: Besprechung, Lieferung, Interview, Wartung, Sonstiges
 | PUT | `/visit-purposes/:id` | Ja | Bearbeiten |
 | DELETE | `/visit-purposes/:id` | Ja | Löschen |
 
-### Parkplätze
-
-| Methode | Pfad | Auth | Beschreibung |
-|---|---|---|---|
-| GET | `/parking` | **Nein** | Alle Plätze inkl. `occupied`-Flag (für Kiosk) |
-| POST | `/parking` | Ja | Erstellen |
-| PUT | `/parking/:id` | Ja | Bearbeiten |
-| DELETE | `/parking/:id` | Ja | Löschen |
-
 ### Benutzer (nur superadmin)
 
 | Methode | Pfad | Beschreibung |
@@ -472,27 +501,27 @@ Standardwerte: Besprechung, Lieferung, Interview, Wartung, Sonstiges
 | Methode | Pfad | Auth | Beschreibung |
 |---|---|---|---|
 | GET | `/settings/system` | Ja (admin+) | Alle system_settings |
-| PUT | `/settings/system` | Ja (admin+) | Einstellungen speichern (inkl. `privacy_policy_text`, `privacy_policy_enabled`) |
-| GET | `/settings/smtp-config` | Ja (admin+) | Aktuelle SMTP-Konfiguration aus `.env` (Passwort maskiert) |
+| PUT | `/settings/system` | Ja (admin+) | Einstellungen speichern |
+| GET | `/settings/smtp-config` | Ja (admin+) | Aktuelle SMTP-Konfiguration (Passwort maskiert) |
 | GET | `/settings/privacy-policy` | **Nein** | Datenschutztext + enabled-Flag (für Kiosk) |
-| POST | `/settings/email-test` | Ja (admin+) | Test-E-Mail senden `{ to: "..." }` |
+| POST | `/settings/email-test` | Ja (admin+) | Test-E-Mail senden |
 | POST | `/settings/gdpr/cleanup` | Ja (admin+) | GDPR-Bereinigung ausführen |
 
-### Berichte (standortgefiltert)
+### Berichte
 
 | Methode | Pfad | Beschreibung |
 |---|---|---|
 | GET | `/reports/daily?date=YYYY-MM-DD` | Tagesbericht |
 | GET | `/reports/monthly?year=YYYY&month=MM` | Monatsbericht |
-| GET | `/reports/evacuation` | Evakuierungsliste — gruppiert nach Standort |
-| GET | `/reports/export?from=&to=&format=csv` | CSV-Export |
+| GET | `/reports/evacuation` | Evakuierungsliste — nach Standort gruppiert |
+| GET | `/reports/export?from=&to=&format=csv` | CSV-Export Besuchsdaten |
 
 ### Dokumenten-Upload & Unterschrift
 
 | Methode | Pfad | Auth | Beschreibung |
 |---|---|---|---|
-| POST | `/visits/:visitId/documents` | Nein* | Dokument hochladen |
-| POST | `/documents/:docId/signature-base64` | Nein* | Unterschrift speichern |
+| POST | `/visits/:visitId/documents` | Nein* | Dokument hochladen (für Kiosk) |
+| POST | `/documents/:docId/signature-base64` | Nein* | Unterschrift speichern (für Kiosk) |
 | GET | `/visits/:visitId/documents` | Ja | Dokumente abrufen |
 | GET | `/documents/:docId/download` | Ja | Dokument herunterladen |
 
@@ -501,7 +530,6 @@ Standardwerte: Besprechung, Lieferung, Interview, Wartung, Sonstiges
 | Methode | Pfad | Auth | Beschreibung |
 |---|---|---|---|
 | GET | `/watchlist` | Ja | Liste (?active=1) |
-| GET | `/watchlist/:id` | Ja | Einzelner Eintrag |
 | POST | `/watchlist` | Ja | Person sperren |
 | PUT | `/watchlist/:id` | Ja | Eintrag bearbeiten |
 | DELETE | `/watchlist/:id` | Ja | Sperre aufheben (Soft-Delete) |
@@ -512,55 +540,47 @@ Standardwerte: Besprechung, Lieferung, Interview, Wartung, Sonstiges
 
 | Route | Seite | Auth | Beschreibung |
 |---|---|---|---|
-| `/login` | Login | Nein | |
-| `/kiosk` | KioskStart | **Nein** | Sprachschalter DE/EN |
-| `/kiosk/checkin` | KioskCheckin | **Nein** | QR-Scan |
-| `/kiosk/checkout` | KioskCheckout | **Nein** | QR oder Namenssuche |
-| `/kiosk/manual` | KioskManual | **Nein** | Walk-in mit Kennzeichen + Parkplatz |
-| `/dashboard` | Dashboard | Ja | Kennzahlen, Diagramm |
+| `/login` | Login | Nein | Admin-Login |
+| `/host/login` | HostLogin | Nein | Gastgeber-Portal Login |
+| `/host` | HostPortal | Host-Token | Gastgeber-Portal |
+| `/kiosk` | KioskStart | **Nein** | Sprachschalter DE/EN, 2 Optionen |
+| `/kiosk/checkin` | KioskCheckin | **Nein** | QR-Scan oder abat-ID |
+| `/kiosk/checkout` | KioskCheckout | **Nein** | QR, abat-ID oder Namenssuche |
+| `/kiosk/manual` | KioskManual | **Nein** | Walk-in Formular |
+| `/dashboard` | Dashboard | Ja | Kennzahlen, Diagramm, Quick-Check-in |
 | `/visitors` | Besucher | Ja | Tabs: Alle / Angekündigt / Aktiv / Verlassen |
-| `/hosts` | Gastgeber | Ja | |
+| `/hosts` | Gastgeber | Ja | inkl. Portal-Passwort setzen (superadmin) |
 | `/preregistrations` | Vorregistrierung | Ja | Einzel- und Gruppenregistrierung |
 | `/evacuation` | Evakuierung | Ja | Nach Standort gruppiert, Drucklayout |
-| `/reports` | Berichte | Ja | |
+| `/reports` | Berichte | Ja (admin+) | Tages-/Monatsberichte, CSV-Export |
 | `/watchlist` | Sperrliste | Ja | Gesperrte Personen verwalten |
 | `/settings` | Einstellungen | Ja (admin+) | Alle Konfigurations-Tabs |
+| `/audit-log` | Audit-Log & Compliance | Ja (superadmin) | Protokoll-Download, Compliance-Bericht |
+| `*` | NotFound | — | 404-Fehlerseite |
 
 ### Einstellungs-Tabs (Settings.jsx)
 
-| Tab | Inhalt |
-|---|---|
-| Standorte | CRUD Standorte |
-| Besuchszwecke | CRUD Besuchszwecke |
-| Parkplätze | CRUD Parkplätze mit Belegungsanzeige |
-| Benutzer | CRUD Benutzer + Standortzuweisung (nur superadmin) |
-| Etikettendrucker | IP, Port, Aktivierung, Verbindungstest |
-| Datenschutz | GDPR Aufbewahrungsdauer, Bereinigung, E-Mail-Bestätigung |
-| E-Mail | SMTP-Konfiguration (read-only aus .env), Verschlüsselung (STARTTLS/SSL/Keine), Test-E-Mail |
-| Passwort ändern | Eigenes Passwort ändern |
-
-### Dashboard (Dashboard.jsx)
-
-- **"Einchecken"-Button** oben rechts öffnet ein Quick-Check-in-Modal mit Name, Unternehmen, Gastgeber, Besuchsgrund
-- **Letzte Besuche**-Tabelle zeigt jetzt die `abat-ID` als eigene Spalte (blau highlighted, Monospace-Schrift)
-- **Suche** in der Tabelle filtert nach Name, Firma und abat-ID
-- Auschecken per Button direkt in der Zeile (bereits vorher vorhanden)
-
-### Besucherliste (Visitors.jsx) — Tabs
-
-| Tab | Datenquelle | Beschreibung |
+| Tab | Inhalt | Rolle |
 |---|---|---|
-| Alle | `GET /visitors` | Alle Besucher mit letztem aktiven Visit |
-| Angekündigt | `GET /preregistrations?status=pending` | Vorregistriert, noch nicht eingecheckt |
-| Aktiv | `GET /visitors?status=active` | Aktuell im Gebäude |
-| Bereits verlassen | `GET /visitors?status=completed` | Heute ausgecheckt |
+| Standorte | CRUD Standorte | admin+ |
+| Besuchszwecke | CRUD Besuchszwecke | admin+ |
+| Benutzer | CRUD Benutzer + Standortzuweisung | superadmin |
+| Auto-Checkout | Aktivieren/Deaktivieren + Uhrzeit einstellen | superadmin |
+| Etikettendrucker | IP, Port, Aktivierung, Verbindungstest | admin+ |
+| Datenschutz | GDPR Aufbewahrungsdauer, Bereinigung, E-Mail-Bestätigung | admin+ |
+| E-Mail | SMTP-Konfiguration (read-only), Verschlüsselung, Test-E-Mail | admin+ |
+| Passwort ändern | Eigenes Passwort ändern | alle |
 
-Die Tabelle zeigt eine `abat-ID`-Spalte für alle Tabs außer "Angekündigt".
+### Aktionsrechte nach Rolle
 
-**Aktionsbuttons pro Zeile:**
-- PDF-Badge herunterladen (FileText)
-- Badge an Etikettendrucker senden (Printer) — nur wenn Drucker aktiviert
-- Auschecken (LogOut) — nur bei aktiven Visits
+| Aktion | superadmin | admin | receptionist |
+|---|---|---|---|
+| Besucher dauerhaft löschen | ✓ | ✗ | ✗ |
+| Vorregistrierung dauerhaft löschen | ✓ | ✗ | ✗ |
+| Vorregistrierung stornieren | ✓ | ✓ | ✓ |
+| Gastgeber-Portal-Passwort setzen | ✓ | ✗ | ✗ |
+| Audit-Log & Compliance-Bericht | ✓ | ✗ | ✗ |
+| Auto-Checkout konfigurieren | ✓ | ✗ | ✗ |
 
 ---
 
@@ -568,15 +588,17 @@ Die Tabelle zeigt eine `abat-ID`-Spalte für alle Tabs außer "Angekündigt".
 
 Läuft ohne Login, ausgelegt für Tablets am Empfang. Alle Kiosk-Routen sind öffentlich.
 
+### Startseite (`/kiosk`)
+
+Zwei Optionen:
+- **Einchecken** → `/kiosk/checkin`
+- **Auschecken** → `/kiosk/checkout`
+
 ### Mehrsprachigkeit
 
-Der Kiosk unterstützt Deutsch und Englisch. Die Sprache wird per `localStorage` (Key: `kiosk_lang`) gespeichert. Umschalter erscheint im Header der Kiosk-Startseite (🇩🇪 DE / 🇬🇧 EN).
-
-Implementiert in: `frontend/src/context/KioskLangContext.jsx`
+Der Kiosk unterstützt Deutsch und Englisch. Die Sprache wird per `localStorage` (Key: `kiosk_lang`) gespeichert. Umschalter erscheint im Header der Kiosk-Startseite.
 
 ### Check-in Flow (`/kiosk/checkin`) — Mehrstufig
-
-Der Kiosk-Check-in läuft als State-Machine mit vier Stufen:
 
 ```
 scan → confirm → privacy → success
@@ -585,31 +607,10 @@ scan → confirm → privacy → success
 
 | Stufe | Inhalt |
 |---|---|
-| **scan** | QR-Code per Kamera scannen **oder** abat-ID eingeben (`ABAT-` fest vorausgefüllt, nur Ziffern) |
-| **confirm** | Vorregistrierungsdaten anzeigen und ggf. korrigieren (Vorname, Nachname, Unternehmen); Gastgeber read-only |
-| **privacy** | Scrollbarer Datenschutztext (aus Admin konfiguriert) + Unterschriftsfeld (finger/Stift); Button erst nach Unterschrift aktiv |
+| **scan** | QR-Code per Kamera scannen **oder** abat-ID eingeben (`ABAT-` vorausgefüllt, 8 Ziffern) |
+| **confirm** | Vorregistrierungsdaten anzeigen und ggf. korrigieren (Vorname, Nachname, Unternehmen) |
+| **privacy** | Scrollbarer Datenschutztext + Unterschriftsfeld; Button erst nach Unterschrift aktiv |
 | **success** | abat-ID groß angezeigt, Gastgeber, Badge-Nr.; automatischer Rücksprung nach 6 Sekunden |
-
-Der Datenschutz-Schritt wird übersprungen, wenn `privacy_policy_enabled = false` in den Systemeinstellungen.
-
-### abat-ID Eingabe (Kiosk Check-in & Check-out)
-
-- `ABAT-` als statisches, nicht bearbeitbares Präfix angezeigt (grauer Kasten links)
-- Nur die 8 Ziffern werden eingegeben
-- Auto-Submit bei 8 Ziffern — kein Bestätigen-Button nötig
-- Ziffernzähler (z.B. `5/8 Ziffern`) zur Orientierung
-- Implementiert als `AbatIdInput`-Komponente in `KioskCheckin.jsx` und `KioskCheckout.jsx`
-
-### Datenschutzerklärung-Unterschrift
-
-- Text konfigurierbar unter **Einstellungen → Datenschutz** (freies Textfeld)
-- Anzeige im Kiosk als scrollbarer Block
-- Unterschrift via `signature_pad`-Bibliothek (Canvas, Touch/Maus)
-- Besucher unterschreibt mit Finger oder Stift auf dem Tablet
-- Unterschrift-PNG wird als Base64 übertragen, serverseitig als Datei gespeichert
-- Speicherort: `/backend/uploads/signatures/privacy-<timestamp>-<random>.png`
-- Pfad wird in `visits.privacy_policy_signature_path` gespeichert
-- Flag `visits.privacy_policy_signed` wird auf `1` gesetzt
 
 ### Check-out (`/kiosk/checkout`) — 3 Tabs
 
@@ -619,85 +620,31 @@ Der Datenschutz-Schritt wird übersprungen, wenn `privacy_policy_enabled = false
 | abat-ID | `ABAT-` Präfix vorausgefüllt, 8 Ziffern → `POST /visits/checkout-by-abat-id` |
 | Name suchen | Freitext-Suche → `GET /visits/search-active` → Auswahl → Check-out |
 
-### Erfolgsscreen nach Check-in (KioskManual + KioskCheckin)
+### Walk-in (`/kiosk/manual`)
 
-Nach erfolgreichem Check-in wird angezeigt:
-- **abat-ID** — groß, blau, prominent (`ABAT-########`)
-- Badge-Nummer
-- Gastgeber (bei QR-Check-in)
-- Parkplatz (falls vergeben)
-- Automatischer Rücksprung zur Startseite nach 6-Sekunden-Countdown
-
-### Erstanmeldung (`/kiosk/manual`)
-
-Formularfelder:
-- Vorname *, Nachname *, Gastgeber * (Dropdown)
-- Unternehmen, Besuchszweck (Dropdown — aus konfigurierbaren Zwecken)
-- Kennzeichen (Auto-Uppercase), Parkplatz (Dropdown mit Belegungsanzeige)
-- Notizen
-
-### Breiten (alle Kiosk-Seiten)
-
-Alle Kiosk-Seiten wurden auf breitere Container umgestellt:
-
-| Bereich | Klasse | Breite |
-|---|---|---|
-| Erfolgs-/Fehler-Screens | `max-w-xl` | 576 px |
-| Formulare / Inhalts-Bereiche | `max-w-2xl` | 672 px |
-| Login-Seite | `max-w-xl` | 576 px |
+Formularfelder: Vorname *, Nachname *, Gastgeber *, Unternehmen, Besuchszweck, Notizen.
 
 ### QR-Scanner — Technische Besonderheit
 
-`QRScanner.jsx` verwendet `html5-qrcode`. Beim erfolgreichen Scan wurde `scanner.stop()` bisher zweimal aufgerufen (einmal im Callback, einmal im Cleanup des `useEffect`), was zu einem synchronen Fehler und weißem Bildschirm führen konnte.
-
-**Fix:** `stoppedRef`-Flag (`useRef(false)`) verhindert Doppel-Aufrufe. `safeStop()` prüft das Flag vor jedem `stop()`-Aufruf; alle `stop()`-Aufrufe sind zusätzlich mit `try/catch` + `.catch(() => {})` abgesichert.
+`QRScanner.jsx` verwendet `html5-qrcode`. Ein `stoppedRef`-Flag (`useRef(false)`) verhindert Doppel-`stop()`-Aufrufe, die sonst zu einem weißen Bildschirm führen können.
 
 ---
 
 ## 9. abat-ID
 
-Jeder Besucher erhält eine permanente, einzigartige Kennung im Format `ABAT-########` (8 zufällige Ziffern, 0–9).
-
-### Eigenschaften
+Jeder Besucher erhält eine permanente, einzigartige Kennung im Format `ABAT-########` (8 zufällige Ziffern).
 
 | Eigenschaft | Wert |
 |---|---|
 | Format | `ABAT-00000000` bis `ABAT-99999999` |
-| Speicherort | Spalte `abat_id` in Tabelle `visitors` (UNIQUE INDEX `idx_visitors_abat_id`) |
-| Vergabe | Bei **Vorregistrierung** (wenn E-Mail angegeben) oder spätestens beim ersten Check-in |
+| Speicherort | `visitors.abat_id` (UNIQUE INDEX) |
+| Vergabe | Bei Vorregistrierung (wenn E-Mail angegeben) oder beim ersten Check-in |
 | Beständigkeit | Permanent — bleibt bei allen späteren Besuchen gleich |
-| Kollisionsprüfung | Schleife: neue ID generieren, bis keine Kollision in der DB |
 
-### Vergabe-Zeitpunkt
-
-Die abat-ID wird so früh wie möglich vergeben:
-
-| Situation | Zeitpunkt der Vergabe |
-|---|---|
-| Vorregistrierung mit E-Mail | Sofort beim Erstellen der Vorregistrierung (`getOrCreateVisitor()`) |
-| Vorregistrierung ohne E-Mail | Beim Einchecken am Kiosk |
-| Walk-in / Manueller Check-in | Beim Erstellen des Besucher-Datensatzes |
-
-Dadurch ist die abat-ID **bereits in der Einladungs-E-Mail** enthalten und kann als Fallback genutzt werden.
-
-### Anzeige
-
-| Ort | Darstellung |
-|---|---|
-| Vorregistrierungs-E-Mail | Als Box mit blauem Rand, Monospace-Schrift, prominent |
-| Kiosk-Erfolgsscreen (Manual + QR) | Groß, blau, prominente Anzeige direkt nach Check-in |
-| Dashboard (Letzte Besuche) | Eigene Spalte, Monospace-Schrift, blau hinterlegt |
-| Besucherliste (Visitors) | Eigene Spalte (außer Tab "Angekündigt") |
-
-### Backfill
-
-Beim ersten Serverstart nach der Migration werden alle bestehenden Besucher ohne `abat_id` automatisch mit einer einzigartigen ID versorgt (Backfill in `database.js`).
-
-### Nutzung als Fallback zum QR-Code
-
-- Am Kiosk-Check-in: abat-ID eintippen (nur 8 Ziffern, `ABAT-` vorausgefüllt) → automatisches Suchen → Daten bestätigen → Unterschreiben → Check-in
-- Am Kiosk-Check-out: Tab "abat-ID" — gleiche Eingabelogik
-- Am Empfang: Besucher telefonisch identifizieren; in Besucherliste + Dashboard suchbar
+**Einsatz:**
+- In der Vorregistrierungs-E-Mail als Fallback zum QR-Code
+- Am Kiosk-Check-in und Check-out (Tab "abat-ID")
+- Im Admin-Dashboard und Besucherliste als eigene Spalte
 
 ---
 
@@ -705,124 +652,72 @@ Beim ersten Serverstart nach der Migration werden alle bestehenden Besucher ohne
 
 Ablauf: Besucher einchecken → Dokument hochladen (optional) → Unterschrift leisten (optional).
 
-Technische Details: PDF/DOC/DOCX, max. 20 MB, Unterschrift als PNG.  
-Speicherorte: `/backend/uploads/documents/` und `/backend/uploads/signatures/`
+- Formate: PDF/DOC/DOCX, max. 20 MB
+- Unterschrift als PNG (Canvas, Touch/Maus)
+- Speicherorte: `/backend/uploads/documents/` und `/backend/uploads/signatures/`
+- Beide Verzeichnisse sind **nur mit Admin-Token** über die API abrufbar
 
 ---
 
 ## 11. Zugangsdaten & Benutzerrollen
 
-### Accounts
-
-| Name | E-Mail | Rolle |
-|---|---|---|
-| Administrator | `admin@abat.de` | superadmin |
-| Empfang | `empfang@abat.de` | receptionist |
-
 > Zugangsdaten werden separat verwaltet und nicht in der Dokumentation hinterlegt.
 
 ### Rollen & Berechtigungen
 
-| Berechtigung | superadmin | admin | receptionist |
-|---|---|---|---|
-| Dashboard | ✓ | ✓ | ✓ |
-| Besucher verwalten | ✓ | ✓ | ✓ (standortgefiltert) |
-| Gastgeber verwalten | ✓ | ✓ | ✓ |
-| Vorregistrierungen | ✓ | ✓ | ✓ |
-| Evakuierungsliste | ✓ | ✓ | ✓ (standortgefiltert) |
-| Berichte | ✓ | ✓ | ✗ |
-| Einstellungen | ✓ | ✓ | ✗ |
-| Benutzer verwalten | ✓ | ✗ | ✗ |
+| Berechtigung | superadmin | admin | receptionist | host |
+|---|---|---|---|---|
+| Dashboard | ✓ | ✓ | ✓ | ✗ |
+| Besucher verwalten | ✓ | ✓ | ✓ (standortgef.) | ✗ |
+| Besucher löschen | ✓ | ✗ | ✗ | ✗ |
+| Gastgeber verwalten | ✓ | ✓ | ✓ | ✗ |
+| Vorregistrierungen | ✓ | ✓ | ✓ | ✓ (nur eigene) |
+| Evakuierungsliste | ✓ | ✓ | ✓ (standortgef.) | ✗ |
+| Berichte | ✓ | ✓ | ✗ | ✗ |
+| Einstellungen | ✓ | ✓ | ✗ | ✗ |
+| Benutzer verwalten | ✓ | ✗ | ✗ | ✗ |
+| Auto-Checkout konfigurieren | ✓ | ✗ | ✗ | ✗ |
+| Audit-Log & Compliance | ✓ | ✗ | ✗ | ✗ |
+| Host-Portal | ✗ | ✗ | ✗ | ✓ |
+
+### Host-Accounts
+
+Gastgeber-Accounts werden in der `hosts`-Tabelle verwaltet. Ein Portal-Passwort wird vom Superadmin unter **Gastgeber → Schlüssel-Icon** gesetzt (min. 8 Zeichen). Das Login erfolgt unter `/host/login` mit der E-Mail-Adresse des Gastgebers.
 
 ---
 
 ## 12. Standortbasierte Zugriffskontrolle
 
-Benutzer (insbesondere Receptionist) können auf bestimmte Standorte beschränkt werden.
+Benutzer können auf bestimmte Standorte beschränkt werden.
 
-### Funktionsweise
-
-1. In **Einstellungen → Benutzer** werden einem Benutzer ein oder mehrere Standorte zugewiesen (Checkboxen im Modal)
-2. Die Zuordnung wird in der Tabelle `user_locations` gespeichert
-3. Bei jedem API-Request lädt die Auth-Middleware `location_ids[]` für den eingeloggten User
-4. Endpunkte mit Standortfilterung geben nur Daten der erlaubten Standorte zurück
-
-### Filterung aktiv bei
-
-- `GET /visitors` — Besucherliste
-- `GET /visitors/active` — Aktive Besucher
-- `GET /visitors?status=completed` — Ausgecheckte Besucher
-- `GET /reports/evacuation` — Evakuierungsliste
-
-### Regeln
+1. In **Einstellungen → Benutzer** werden Standorte zugewiesen
+2. Zuordnung wird in `user_locations` gespeichert
+3. Auth-Middleware lädt `location_ids[]` bei jedem Request
+4. Gefilterte Endpunkte: `GET /visitors`, `GET /visitors/active`, `GET /reports/evacuation`
 
 | Situation | Verhalten |
 |---|---|
-| superadmin / admin | Immer alle Standorte — keine Filterung |
-| Receptionist mit 0 Standorten | Alle Standorte sichtbar (kein Filter) |
+| superadmin / admin | Immer alle Standorte |
+| Receptionist mit 0 Standorten | Alle Standorte sichtbar |
 | Receptionist mit 1+ Standorten | Nur zugewiesene Standorte |
-
-### Benutzeroberfläche
-
-In der Benutzertabelle (Einstellungen) gibt es eine Spalte "Standorte":
-- Blau markierte Standort-Badges = eingeschränkter Zugriff
-- "Alle" = kein Filter
 
 ---
 
 ## 13. Badge-Drucker (Brother QL-820NWB)
 
-### Hardware
-
 | Eigenschaft | Wert |
 |---|---|
 | Modell | Brother QL-820NWB |
-| Verbindung | Netzwerk (IP-Adresse, RAW TCP) |
-| Port | 9100 (konfigurierbar im Admin) |
+| Verbindung | Netzwerk (RAW TCP) |
+| Port | 9100 (konfigurierbar) |
 | Etikett | DK-11202 (62 × 100 mm) |
 | Auflösung | 300 dpi → 696 × 1109 Pixel |
 
-### Konfiguration
+**Konfiguration:** Einstellungen → Etikettendrucker → IP, Port, Aktivierung, Verbindungstest.
 
-**Einstellungen → Etikettendrucker:**
-- Drucker aktivieren (Checkbox)
-- IP-Adresse eingeben
-- Port (Standard: 9100)
-- "Verbindung testen" Button
+**Label-Inhalt:** abat-Logo, Besuchername, Unternehmen, Gastgeber, Badge-Nr., Datum & Uhrzeit.
 
-Einstellungen werden in `system_settings` gespeichert (kein Neustart nötig).
-
-### Technische Umsetzung
-
-**`backend/src/services/label-printer.js`:**
-- Canvas (696 × 1109 px) mit abat-Branding rendern
-- Brother QL Raster Protocol: Init → Raster-Modus → Print-Info (DK-11202) → Zeilendaten → Drucken
-- Jede Zeile: 87 Bytes (696 / 8 = 87), MSB-first Bit-Reihenfolge
-- TCP-Verbindung via `net.Socket` mit 8 s Timeout
-
-### Label-Inhalt
-
-- abat-Logo oben links
-- Besuchername (groß)
-- Unternehmen
-- Gastgeber
-- Badge-Nummer
-- Parkplatz (falls vorhanden)
-- Datum & Uhrzeit
-
-### Badge per Knopfdruck
-
-In der Besucherliste gibt es pro Zeile einen **Drucker-Button** (lila). Er ruft `POST /api/visitors/:id/print-badge/:visitId` auf. Der Button pulsiert während des Druckens.
-
-### PDF-Badge (A6 Landscape)
-
-Zusätzlich zum Etikettendruck gibt es weiterhin den PDF-Badge-Download:
-- Format: A6 Landscape (~419 × 298 pt)
-- Blauer Akzentstreifen links (8 px, `#00A3E0`)
-- Blauer Header-Bereich (`#004B87`) mit Titel + Datum
-- QR-Code oben rechts (84 × 84 pt)
-- Besuchername groß, Firma, Info-Grid mit Gastgeber + Badge-Nr. + Parkplatz
-- Grauer Footer mit Hinweis
+**PDF-Badge (A6 Landscape):** Alternativ als PDF downloadbar — blauer Header, QR-Code, Besuchsinfos.
 
 ---
 
@@ -832,143 +727,171 @@ Zusätzlich zum Etikettendruck gibt es weiterhin den PDF-Badge-Download:
 
 | Auslöser | Empfänger | Beschreibung |
 |---|---|---|
-| Vorregistrierung erstellt (mit E-Mail) | Besucher | QR-Code (CID-Anhang), abat-ID, Besuchsdetails, Google Maps Link |
-| Check-in (Kiosk oder Admin) | Gastgeber | Benachrichtigung: Besucher ist eingetroffen, Badge-Nr., abat-ID |
-| Check-in (wenn `visitor_email_confirmation = true`) | Besucher | Bestätigung mit Datum, Zeit, Gastgeber, Badge-Nr., Parkplatz |
-
-### E-Mail-Design (alle drei Mails)
-
-Alle E-Mails verwenden eine gemeinsame `emailShell(content, company)`-Funktion (`email.js`) mit einheitlichem Layout:
-
-```
-┌─────────────────────────────────────┐
-│  abat AG            (blau #004B87)  │  ← Header
-│  abat AG · Besuchsverwaltung        │
-├─────────────────────────────────────┤
-│  Guten Tag, [Name]!                 │  ← Personalisierte Begrüßung
-│                                     │
-│  ┌───────────────────────────────┐  │
-│  │ Besuchsdetails               │  │  ← Detail-Karte (grau)
-│  │ Datum    15. Juni 2026       │  │
-│  │ Gastgeber  Max Mustermann    │  │
-│  │ Standort   Bremen            │  │
-│  │            📍 Google Maps →  │  │
-│  └───────────────────────────────┘  │
-│                                     │
-│        [ QR-Code 210×210 ]          │  ← QR eingebettet (CID)
-│                                     │
-│  ┌─ abat-ID (Fallback) ───────────┐ │  ← Blauer linker Rand
-│  │  ABAT-12345678                 │ │
-│  └────────────────────────────────┘ │
-│                                     │
-│  Mit freundlichen Grüßen,           │
-│  abat AG                            │
-├─────────────────────────────────────┤
-│  Automatisch generiert ...  (grau)  │  ← Footer
-└─────────────────────────────────────┘
-```
-
-**Responsive Design:**
-- Äußeres Layout: `max-width: 560px`, auf Mobilgeräten `100%` Breite
-- Innen-Padding: 36px Desktop, 28px Mobil (via `@media` in `<style>`)
-- QR-Code: 210×210px Desktop → 180×180px Mobil
-- Detail-Zeilen: zweispaltig Desktop → einspaltiger Stack Mobil
-- Keine externen Ressourcen (Bilder, Fonts) — nur CID für QR-Code
-
-**Technisch:**
-- Volle HTML-Dokumente (`<!DOCTYPE html>`) mit `<meta charset>`, `<meta viewport>`, `<style>` für Media Queries
-- Vollständig inline gestylte kritische Elemente für maximale E-Mail-Client-Kompatibilität (Gmail, Outlook, Apple Mail, Thunderbird)
-- QR-Code als CID-Anhang (`cid:qrcode@abat`) in `nodemailer` `attachments[]`
-
-### QR-Code in E-Mail
-
-| Eigenschaft | Wert |
-|---|---|
-| Generierung | Serverseitig via `qrcode` npm-Paket |
-| Format | PNG-Buffer (`generateQR()`) |
-| Übertragung | CID-Inline-Anhang (`cid:qrcode@abat`) — funktioniert in allen E-Mail-Clients |
-| Inhalt | Roher QR-Code-String (z.B. `PRE-1718459234567-ABCDEF`) |
-| Größe | 200×200 px (Generierung), 210×210 px (Darstellung in E-Mail) |
-
-> `data:` URLs (Base64 direkt im `<img src>`) werden von den meisten E-Mail-Clients blockiert. CID-Anhänge umgehen das vollständig.
+| Vorregistrierung erstellt | Besucher | QR-Code (CID-Anhang), abat-ID, Besuchsdetails |
+| Check-in | Gastgeber | Benachrichtigung: Besucher eingetroffen |
+| Check-in (`visitor_email_confirmation = true`) | Besucher | Bestätigung mit Datum, Zeit, Gastgeber, Badge-Nr. |
 
 ### SMTP-Konfiguration
 
-SMTP-Zugangsdaten werden in der `.env`-Datei gespeichert und sind **nur durch Datei-Bearbeitung + Neustart** änderbar. Die Verschlüsselung (`smtp_security`) wird zusätzlich in `system_settings` gespeichert und ist **ohne Neustart** änderbar.
+In `.env` gespeichert (Neustart bei Änderung nötig). Verschlüsselung (`smtp_security`) in `system_settings` ohne Neustart änderbar.
 
-Unter **Einstellungen → E-Mail** werden alle aktuell gespeicherten Werte schreibgeschützt angezeigt:
-
-| Feld | Quelle | Besonderheit |
+| Option | Port | Verwendung |
 |---|---|---|
-| SMTP-Host | `SMTP_HOST` aus `.env` | |
-| SMTP-Port | Abgeleitet vom aktiven Verschlüsselungstyp | Aktualisiert sich beim Umschalten der Verschlüsselung |
-| SMTP-Benutzer | `SMTP_USER` aus `.env` | |
-| SMTP-Passwort | `SMTP_PASS` aus `.env` | Immer maskiert (`••••••••`) |
-| Absender-E-Mail | `FROM_EMAIL` aus `.env` | |
-| Firmenname | `COMPANY_NAME` aus `.env` | |
+| **STARTTLS** | 587 | Standard — Gmail, Office 365 |
+| **SSL / TLS** | 465 | Ältere Server / manche Hoster |
+| **Keine** | 25 | Interne Mailserver ohne Zertifikat |
 
-Der Port wird nicht aus der `.env` gelesen, sondern direkt aus dem aktiven Verschlüsselungstyp berechnet (`system_settings`). Daher stimmt er immer mit der Auswahl überein.
-
-API-Endpoint: `GET /api/settings/smtp-config` (admin+) — gibt `.env`-Werte zurück, Passwort wird serverseitig maskiert.
-
-### Verschlüsselungsoptionen
-
-| Option | Port | Technik | Verwendung |
-|---|---|---|---|
-| **STARTTLS** | 587 | `secure: false` | Standard — Gmail, Office 365 |
-| **SSL / TLS** | 465 | `secure: true` | Ältere Server / manche Hoster |
-| **Keine** | 25 | `secure: false, ignoreTLS: true` | Interne Mailserver ohne Zertifikat |
-
-### Test-E-Mail
-
-Unter **Einstellungen → E-Mail → Test-E-Mail senden**:
-1. Empfänger-E-Mail eingeben
-2. "Test senden" klicken
-3. Backend prüft SMTP-Verbindung (`transport.verify()`) und sendet Test-E-Mail
-4. Erfolg/Fehler als Toast-Meldung
-
-Bei Fehler wird die konkrete SMTP-Fehlermeldung angezeigt.
-
-### Fallback ohne SMTP
-
-Wenn kein SMTP konfiguriert ist (`SMTP_USER` nicht gesetzt oder Platzhalterwert `your@email.com`), werden E-Mails nur in der Konsole geloggt — kein Absturz.
+**Fallback:** Ohne SMTP-Konfiguration werden E-Mails nur in der Konsole geloggt — kein Absturz.
 
 ---
 
-## 15. GDPR & Datenschutz
+## 15. Auto-Checkout
+
+Alle Besucher, die sich bis zur konfigurierten Uhrzeit nicht ausgecheckt haben, werden automatisch ausgecheckt.
+
+### Funktionsweise
+
+- Implementiert via nativem `setTimeout` in `backend/src/services/auto-checkout.js`
+- Kein externer Cron-Job oder externes Paket erforderlich
+- Plant sich nach jedem Lauf automatisch für den nächsten Tag neu
+- Beim Serverstart wird der nächste Lauf berechnet und geplant
+
+### Konfiguration
+
+**Einstellungen → Auto-Checkout (superadmin):**
+
+| Einstellung | Key in `system_settings` | Beschreibung |
+|---|---|---|
+| Aktiviert | `auto_checkout_enabled` | Ein/Aus |
+| Uhrzeit | `auto_checkout_time` | Format `HH:MM`, Standard `19:00` |
+
+### Audit-Log-Eintrag
+
+Bei jedem Auto-Checkout wird ein `AUTO_CHECKOUT`-Eintrag im Audit-Log geschrieben mit Anzahl der ausgecheckten Besucher.
+
+---
+
+## 16. Host-Portal
+
+Gastgeber erhalten Zugang zu einem separaten Portal unter `/host/login`, ohne dass sie Admin-Zugang benötigen.
+
+### Funktionen
+
+| Funktion | Beschreibung |
+|---|---|
+| Meine Besucher | Aktuell anwesende und heute ausgecheckte Besucher in Echtzeit (30 s Refresh) |
+| Vorregistrierung erstellen | Neuen Besuch vorregistrieren, QR-Code wird per E-Mail verschickt |
+
+### Technische Umsetzung
+
+- **Separates JWT:** `{ type: 'host', hostId }` — verhindert Privilege-Escalation zwischen Admin- und Host-Token
+- **Token-Gültigkeit:** 12 Stunden
+- **Gespeichert:** `host_token` in `localStorage`
+- **Middleware:** `authenticateHost()` in `routes/host-portal.js` prüft `type === 'host'`
+
+### Portal-Passwort einrichten
+
+1. Superadmin öffnet **Gastgeber** im Admin-Panel
+2. Klick auf das Schlüssel-Icon in der Zeile des Gastgebers
+3. Passwort eingeben (min. 8 Zeichen) und bestätigen
+4. Gastgeber kann sich nun unter `/host/login` mit E-Mail + Passwort anmelden
+
+---
+
+## 17. Audit-Log & Compliance
+
+### Protokollierung
+
+Alle sicherheitsrelevanten Ereignisse werden automatisch protokolliert:
+
+| Ereignis | Wann |
+|---|---|
+| `LOGIN` | Erfolgreicher Admin- oder Host-Login |
+| `LOGIN_FAILED` | Fehlgeschlagener Login-Versuch |
+| `CHECKIN` | Besucher eingecheckt |
+| `CHECKOUT` | Besucher ausgecheckt |
+| `AUTO_CHECKOUT` | Automatischer Checkout um 19:00 |
+| `VORREGISTRIERUNG` | Vorregistrierung erstellt |
+| `VORREGISTRIERUNG_GELÖSCHT` | Vorregistrierung dauerhaft gelöscht |
+| `VISITOR_GELÖSCHT` | Besucher-Datensatz dauerhaft gelöscht |
+
+### Dateiformat
+
+- **Speicherort:** `/opt/visitor-mgmt/logs/audit-YYYY-MM-DD.log`
+- **Format:** JSON-Lines (eine JSON-Zeile pro Ereignis)
+- **Beispiel:** `{"ts":"2026-06-16T10:23:45.123Z","action":"LOGIN","actor":"admin@abat.de","detail":"Admin-Login erfolgreich"}`
+- **Aufbewahrung:** 90 Tage — ältere Dateien werden automatisch beim Serverstart gelöscht
+
+### Zugang im Admin-Panel
+
+Nur für Superadmin unter `/audit-log`:
+
+- **Tagesprotokoll herunterladen:** Liste aller verfügbaren Tage, Download als `.log`-Rohdatei
+- **Compliance-Bericht:** CSV-Download für einen Zeitraum mit:
+  - Abschnitt 1: Alle Besuche (abat-ID, Name, Firma, Gastgeber, Zeiten, Status)
+  - Abschnitt 2: Alle Audit-Log-Ereignisse
+  - Format: UTF-8 CSV mit BOM (direkt in Excel öffenbar)
+
+---
+
+## 18. Sicherheit
+
+### HTTP-Sicherheitsheader (helmet)
+
+| Header | Wert |
+|---|---|
+| `X-Frame-Options` | `SAMEORIGIN` — verhindert Clickjacking |
+| `X-Content-Type-Options` | `nosniff` — verhindert MIME-Sniffing |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` |
+| `Cross-Origin-Resource-Policy` | `same-origin` |
+
+### Brute-Force-Schutz
+
+Rate-Limiting auf Login-Endpunkten: max. **20 Versuche pro 15 Minuten** pro IP-Adresse.  
+Betrifft: `POST /auth/login` und `POST /host-portal/login`.
+
+### Dateigeschützte Uploads
+
+| Pfad | Zugriffsschutz |
+|---|---|
+| `/uploads/photos/` | Öffentlich (Admin-UI benötigt direkten Zugriff) |
+| `/uploads/documents/` | Erfordert Admin-JWT |
+| `/uploads/signatures/` | Erfordert Admin-JWT |
+
+### Passwörter
+
+- bcrypt mit **Kostenfaktor 12** (alle neuen Hashes)
+- Mindestlänge: **8 Zeichen** für alle Konten
+- `password_hash` wird **nie** über die API zurückgegeben
+
+### JWT-Secret
+
+- 128-Byte kryptografisch zufälliger Secret (generiert mit `crypto.randomBytes(64).toString('hex')`)
+- Gespeichert in `/opt/visitor-mgmt/backend/.env`
+- Bei Änderung des Secrets werden alle aktiven Sessions invalidiert
+
+### Datenbankabfragen
+
+Alle Datenbankabfragen verwenden parametrisierte Prepared Statements (better-sqlite3) — keine SQL-Injection möglich.
+
+---
+
+## 19. GDPR & Datenschutz
 
 ### Datenschutzerklärung-Unterschrift am Kiosk
 
-Konfigurierbar unter **Einstellungen → Datenschutz**:
+Konfigurierbar unter **Einstellungen → Datenschutz:**
 
 | Einstellung | Beschreibung |
 |---|---|
-| `privacy_policy_enabled` | Unterschrift am Kiosk erforderlich (Checkbox) |
-| `privacy_policy_text` | Freitextfeld — vollständiger Datenschutztext (mehrzeilig) |
+| `privacy_policy_enabled` | Unterschrift am Kiosk erforderlich |
+| `privacy_policy_text` | Vollständiger Datenschutztext (mehrzeilig, konfigurierbar) |
 
-**Ablauf am Kiosk:**
-1. Nach Daten-Bestätigung (Stufe "confirm") öffnet sich Stufe "privacy"
-2. Text wird in scrollbarem Block angezeigt
-3. Besucher unterschreibt mit Finger/Stift auf dem Touchscreen
-4. Erst nach Unterschrift wird der Check-in-Button aktiv
-5. Unterschrift → Base64-PNG → Server → Datei in `/uploads/signatures/privacy-*.png`
-
-Ist `privacy_policy_enabled = false`, wird die Stufe komplett übersprungen.
+Ablauf: Besucher liest Text → unterschreibt mit Finger/Stift → PNG wird gespeichert → `privacy_policy_signed = 1`
 
 ### Automatische Anonymisierung
 
-Konfigurierbar unter **Einstellungen → Datenschutz**.
-
-| Einstellung | Beschreibung |
-|---|---|
-| Aufbewahrungsdauer | Anzahl Tage bis zur Anonymisierung (Standard: 365) |
-| E-Mail-Bestätigung | Check-in-Bestätigung an Besucher ein/aus |
-
-**Bereinigung ausführen:** Button "Jetzt bereinigen" → zeigt Anzahl anonymisierter Datensätze.
-
-### Was wird anonymisiert
-
-Besucher, deren letzter Check-in älter als N Tage ist und die **keinen aktiven Visit** haben:
+Besucher, deren letzter Check-in älter als N Tage und die keinen aktiven Visit haben:
 
 ```
 first_name  → '[GELÖSCHT]'
@@ -976,14 +899,19 @@ last_name   → '[GELÖSCHT]'
 email       → NULL
 phone       → NULL
 company     → NULL
-photo_path  → NULL
 ```
 
 Visit-Statistiken (Datum, Uhrzeit, Standort, Badge-Nr.) bleiben erhalten.
 
+**Manuelle Auslösung:** Einstellungen → Datenschutz → "Jetzt bereinigen"
+
+### Superadmin-Löschrechte
+
+Superadmins können Besucher und Vorregistrierungen dauerhaft aus der Datenbank löschen (nicht nur anonymisieren). Jede Löschung wird im Audit-Log protokolliert.
+
 ---
 
-## 16. Infrastruktur & Deployment
+## 20. Infrastruktur & Deployment
 
 ### Systemd-Service
 
@@ -1018,7 +946,7 @@ WantedBy=multi-user.target
 
 ---
 
-## 17. SSL & Cloudflare
+## 21. SSL & Cloudflare
 
 | Eigenschaft | Wert |
 |---|---|
@@ -1031,22 +959,20 @@ Cloudflare muss auf **Full (Strict)** SSL gestellt sein.
 
 ---
 
-## 18. Umgebungsvariablen (.env)
+## 22. Umgebungsvariablen (.env)
 
-**Manuelle Installation:** `/opt/visitor-mgmt/backend/.env`  
-**Docker:** `/opt/visitor-mgmt/.env` (Projekt-Root, von `docker-compose.yml` geladen)
+**Pfad:** `/opt/visitor-mgmt/backend/.env`
 
 ```env
 # Pflicht
-JWT_SECRET=<langer-zufälliger-string>   # openssl rand -hex 32
-APP_URL=https://visitor.luwilab.work     # Öffentliche URL — kein abschließender Slash!
+JWT_SECRET=<128-Byte zufälliger String>  # node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+APP_URL=https://visitor.luwilab.work      # Öffentliche URL — kein abschließender Slash!
 
 # Initialer Admin-Account (einmalig beim ersten Start, solange DB leer ist)
 ADMIN_EMAIL=admin@firma.de
 ADMIN_PASSWORD=<sicheres-passwort>
 ADMIN_NAME=Administrator
 
-# Nur manuelle Installation (Docker setzt diese automatisch)
 PORT=3001
 DB_PATH=./data/visitors.db
 
@@ -1058,36 +984,26 @@ SMTP_PASS=<smtp-passwort>
 SMTP_SECURITY=starttls
 FROM_EMAIL=<absender@firma.de>
 COMPANY_NAME=<firmenname>
-
-# Nur Docker
-HTTP_PORT=80
 ```
 
 | Variable | Pflicht | Beschreibung |
 |---|---|---|
-| `JWT_SECRET` | **Ja** | Zufälliger langer String (`openssl rand -hex 32`) |
-| `APP_URL` | **Ja** | Öffentliche URL der App — wird für CORS-Prüfung verwendet |
-| `ADMIN_EMAIL` | **Ja** | E-Mail des initialen Admins (nur beim ersten Start) |
-| `ADMIN_PASSWORD` | **Ja** | Passwort des initialen Admins (nur beim ersten Start) |
-| `ADMIN_NAME` | Nein | Anzeigename des initialen Admins (Standard: `Administrator`) |
-| `PORT` | Nein | Backend-Port (Standard: 3001; Docker: intern, nicht exponiert) |
-| `DB_PATH` | Nein | SQLite-Pfad (Docker: via `docker-compose.yml` auf `/app/data/visitors.db` gesetzt) |
-| `HTTP_PORT` | Nein | Externer Port des Frontend-Containers (Standard: 80, nur Docker) |
+| `JWT_SECRET` | **Ja** | Kryptografisch zufälliger 128-Byte-String |
+| `APP_URL` | **Ja** | Öffentliche URL — wird für CORS verwendet |
+| `ADMIN_EMAIL` | Ja (Erststart) | E-Mail des initialen Admins |
+| `ADMIN_PASSWORD` | Ja (Erststart) | Passwort des initialen Admins |
+| `PORT` | Nein | Backend-Port (Standard: 3001) |
+| `DB_PATH` | Nein | SQLite-Pfad (Standard: `./data/visitors.db`) |
 | `SMTP_HOST` | Nein | SMTP-Server |
-| `SMTP_PORT` | Nein | SMTP-Port |
 | `SMTP_USER` | Nein | SMTP-Benutzername |
-| `SMTP_PASS` | Nein | SMTP-Passwort / App-Passwort |
-| `SMTP_SECURITY` | Nein | `starttls` / `ssl` / `none` (Fallback, DB-Wert hat Vorrang) |
+| `SMTP_PASS` | Nein | SMTP-Passwort |
+| `SMTP_SECURITY` | Nein | `starttls` / `ssl` / `none` (DB-Wert hat Vorrang) |
 | `FROM_EMAIL` | Nein | Absender-Adresse |
 | `COMPANY_NAME` | Nein | Firmenname (in Mails und Badge) |
 
-> `APP_URL` ist besonders wichtig: Das Backend prüft den `Origin`-Header aller Browser-Requests dagegen. Fehlt der Wert oder stimmt er nicht überein, blockiert CORS alle API-Aufrufe.
->
-> `SMTP_SECURITY` aus der `.env` ist der Fallback — der Wert in `system_settings` hat immer Vorrang und ist ohne Neustart änderbar.
-
 ---
 
-## 19. Wichtige Befehle
+## 23. Wichtige Befehle
 
 ### Service-Verwaltung
 
@@ -1104,7 +1020,7 @@ journalctl -u visitor-mgmt -n 100
 ```bash
 cd /opt/visitor-mgmt/frontend
 npm run build
-# Kein Nginx-Reload nötig
+# Kein Nginx-Reload nötig — Nginx liest dist/ direkt
 ```
 
 ### Datenbank-Backup
@@ -1114,33 +1030,20 @@ sqlite3 /opt/visitor-mgmt/backend/data/visitors.db \
   ".backup /root/backup-$(date +%Y%m%d).db"
 ```
 
-### Docker-Befehle
+### Audit-Logs prüfen
 
 ```bash
-# Starten (Images neu bauen + Container starten)
-docker compose up -d --build
+ls /opt/visitor-mgmt/logs/
+cat /opt/visitor-mgmt/logs/audit-$(date +%Y-%m-%d).log
+```
 
-# Status aller Container
-docker compose ps
+### JWT-Secret neu generieren
 
-# Live-Logs
-docker compose logs -f
-
-# Nur Backend-Logs
-docker compose logs -f backend
-
-# Nach .env-Änderung neu starten
-docker compose restart
-
-# Stoppen
-docker compose down
-
-# In Backend-Container einloggen
-docker compose exec backend sh
-
-# Datenbank-Backup (Docker)
-docker compose exec backend sqlite3 /app/data/visitors.db \
-  ".backup /app/data/backup-$(date +%Y%m%d).db"
+```bash
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+# Wert in /opt/visitor-mgmt/backend/.env eintragen
+systemctl restart visitor-mgmt
+# Achtung: Alle aktiven Sessions werden invalidiert
 ```
 
 ### API testen
@@ -1153,16 +1056,11 @@ curl http://localhost:3001/api/health
 curl -X POST http://localhost:3001/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@abat.de","password":"<passwort>"}'
-
-# Systemeinstellungen (mit Token)
-TOKEN="<JWT-Token>"
-curl http://localhost:3001/api/settings/system \
-  -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
 
-## 20. Fehlerbehebung
+## 24. Fehlerbehebung
 
 ### Backend startet nicht
 
@@ -1173,116 +1071,58 @@ cd /opt/visitor-mgmt/backend && node src/index.js  # detaillierter Fehler
 
 Häufige Ursachen: `.env` fehlt, Port 3001 belegt (`ss -tlnp | grep 3001`), fehlende Pakete (`npm install`).
 
+### Weißer Bildschirm / Seite lädt nicht
+
+```bash
+cd /opt/visitor-mgmt/frontend && npm run build
+# Prüfen ob Build-Fehler aufgetreten sind
+```
+
+Anschließend Hard-Reload im Browser: `Ctrl+Shift+R`.
+
 ### Etikettendrucker antwortet nicht
 
-1. Drucker im Netzwerk erreichbar: `ping <Drucker-IP>`
-2. Port 9100 erreichbar: `nc -zv <Drucker-IP> 9100`
+1. `ping <Drucker-IP>`
+2. `nc -zv <Drucker-IP> 9100`
 3. "Verbindung testen" in Einstellungen → Etikettendrucker
 4. Drucker-IP und Port im Admin prüfen
 
 ### E-Mail wird nicht gesendet
 
 1. SMTP-Test unter **Einstellungen → E-Mail → Test-E-Mail senden**
-2. Fehlermeldung gibt konkreten SMTP-Fehler aus
-3. `.env` prüfen: `SMTP_USER`, `SMTP_PASS`, `SMTP_HOST`, `SMTP_PORT`
-4. Verschlüsselung prüfen (STARTTLS ↔ SSL je nach Provider)
-5. Bei Gmail: App-Passwort verwenden (kein normales Passwort)
-6. Nach `.env`-Änderung: `systemctl restart visitor-mgmt`
+2. `.env` prüfen: `SMTP_USER`, `SMTP_PASS`, `SMTP_HOST`
+3. Verschlüsselung prüfen (STARTTLS ↔ SSL je nach Provider)
+4. Bei Gmail: App-Passwort verwenden (kein normales Passwort)
+5. Nach `.env`-Änderung: `systemctl restart visitor-mgmt`
 
-### Benutzer sieht falsche Standortdaten
-
-Standortzuweisungen in **Einstellungen → Benutzer** prüfen. Kein Eintrag = alle Standorte sichtbar.
-
-### Login funktioniert nicht
+### Login schlägt fehl
 
 ```bash
 sqlite3 /opt/visitor-mgmt/backend/data/visitors.db \
   "SELECT id, name, email, role, active FROM users;"
 ```
 
+Nach Änderung des JWT-Secrets müssen sich alle Nutzer neu einloggen.
+
+### Benutzer sieht falsche Standortdaten
+
+Standortzuweisungen in **Einstellungen → Benutzer** prüfen. Kein Eintrag = alle Standorte sichtbar.
+
 ### SSL-Fehler
 
 Cloudflare SSL-Modus muss **Full (Strict)** sein.
 
-### Frontend zeigt alte Version
-
-Hard-Reload: `Ctrl+Shift+R`. JS/CSS-Dateien haben Content-Hash im Namen — Caching-Probleme treten normalerweise nicht auf.
-
-### Docker: API-Aufrufe schlagen fehl (CORS-Fehler im Browser)
-
-`APP_URL` in der `.env` prüfen — muss exakt mit der öffentlichen Domain übereinstimmen (inkl. Schema, ohne abschließenden Slash):
-
-```
-APP_URL=https://visitor.luwilab.work
-```
-
-Nach Änderung: `docker compose restart`
-
-### Docker: Frontend startet nicht / bleibt bei "Waiting"
-
-Backend-Healthcheck läuft noch. Warten bis `docker compose ps` den Backend-Status als `healthy` zeigt (dauert bis zu 30 Sekunden beim ersten Start).
+### Auto-Checkout funktioniert nicht
 
 ```bash
-docker compose logs backend   # Fehler im Backend prüfen
+journalctl -u visitor-mgmt | grep auto-checkout
 ```
 
-### Docker: Login funktioniert nicht beim ersten Start
-
-Prüfen ob der initiale Admin-Account angelegt wurde:
-
-```bash
-docker compose exec backend sqlite3 /app/data/visitors.db \
-  "SELECT id, name, email, role FROM users;"
-```
-
-Ist die Tabelle leer, wurde die `.env` beim ersten Start nicht geladen. `.env` prüfen und Container neu erstellen:
-
-```bash
-docker compose down && docker compose up -d
-```
-
----
-
-## 21. Docker-Deployment
-
-Siehe [docs/installation-docker.md](installation-docker.md) für die vollständige Anleitung.
-
-### Architektur (Docker)
-
-```
-Browser
-   │  HTTPS (via Cloudflare oder Nginx auf Host)
-   ▼
-frontend-Container (Nginx :80)
-   ├── /          → React SPA (statische Dateien im Container)
-   ├── /api/      → Proxy → backend:3001 (internes Docker-Netz)
-   └── /uploads/  → Proxy → backend:3001
-
-backend-Container (Node.js :3001) — nicht nach außen exponiert
-   └── SQLite → Docker Volume "db_data"
-
-Docker Volumes:
-   db_data   → /app/data/visitors.db
-   uploads   → /app/uploads/
-```
-
-### Healthcheck
-
-Der Backend-Container hat einen eingebauten Healthcheck auf `/api/health`. Das Frontend wartet mit dem Start, bis der Backend-Container als `healthy` gilt (Intervall: 10 s, max. 5 Versuche, Start-Wartezeit: 15 s).
-
-### Updates einspielen (Docker)
-
-```bash
-git pull
-docker compose up -d --build
-docker image prune -f
-```
+Prüfen ob `auto_checkout_enabled = true` in den Einstellungen und ob die Uhrzeit korrekt als `HH:MM` eingetragen ist.
 
 ---
 
 ## Dateipfade auf einen Blick
-
-### Manuelle Installation
 
 | Was | Pfad |
 |---|---|
@@ -1291,19 +1131,10 @@ docker image prune -f
 | Datenbank | `/opt/visitor-mgmt/backend/data/visitors.db` |
 | Umgebungsvariablen | `/opt/visitor-mgmt/backend/.env` |
 | Uploads | `/opt/visitor-mgmt/backend/uploads/` |
+| Audit-Logs | `/opt/visitor-mgmt/logs/` |
 | Frontend-Build | `/opt/visitor-mgmt/frontend/dist/` |
 | Nginx-Konfiguration | `/etc/nginx/sites-available/visitor.luwilab.work` |
 | SSL-Zertifikat | `/etc/ssl/visitor-mgmt/cert.pem` |
 | Systemd-Service | `/etc/systemd/system/visitor-mgmt.service` |
 | Dokumentation | `/opt/visitor-mgmt/docs/` |
 | Assets (Logos, Font) | `/opt/visitor-mgmt/assets/` |
-
-### Docker
-
-| Was | Pfad |
-|---|---|
-| Projekt-Root | `/opt/visitor-mgmt/` |
-| Umgebungsvariablen | `/opt/visitor-mgmt/.env` |
-| Docker Compose | `/opt/visitor-mgmt/docker-compose.yml` |
-| Datenbank (Volume) | Docker Volume `visitor-mgmt_db_data` |
-| Uploads (Volume) | Docker Volume `visitor-mgmt_uploads` |

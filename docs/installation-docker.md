@@ -1,6 +1,6 @@
 # Docker-Installationsanleitung — Besucherverwaltungssystem
 
-> Empfohlene Methode für Produktiv-Deployments. Kein Node.js oder Nginx auf dem Host erforderlich.
+> **Hinweis:** Docker-Deployment wird nicht mehr aktiv genutzt. Das Produktivsystem läuft als manuelle Installation mit systemd + Nginx. Siehe [installation.md](installation.md).
 
 ---
 

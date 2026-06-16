@@ -6,7 +6,6 @@ Vollständiges, webbasiertes Besucherverwaltungssystem für Unternehmen mit Reac
 
 | Dokument | Beschreibung |
 |---|---|
-| [Docker-Installation](docs/installation-docker.md) | **Empfohlen** — Setup mit Docker & Docker Compose |
 | [Manuelle Installation](docs/installation.md) | Setup direkt auf Ubuntu/Debian mit Nginx & systemd |
 | [Projektdokumentation](docs/dokumentation.md) | Vollständige technische Dokumentation: Architektur, API, DB-Schema, Features |
 
@@ -16,6 +15,7 @@ Vollständiges, webbasiertes Besucherverwaltungssystem für Unternehmen mit Reac
 |---|---|
 | **Frontend** | React 18, Vite, Tailwind CSS, Mulish Font |
 | **Backend** | Node.js, Express.js, better-sqlite3, JWT |
+| **Sicherheit** | helmet, express-rate-limit, bcryptjs (cost 12) |
 | **Services** | PDFKit (Badge), Nodemailer (E-Mail), html5-qrcode (Scanner) |
 | **Infra** | Nginx, systemd, Cloudflare, SQLite (WAL-Modus) |
 
@@ -23,13 +23,17 @@ Vollständiges, webbasiertes Besucherverwaltungssystem für Unternehmen mit Reac
 
 - Check-in / Check-out per QR-Code, abat-ID oder manuell
 - Kiosk-Modus (Deutsch / Englisch) für Tablets am Empfang
-- Vorregistrierungen mit QR-Code-Versand per E-Mail
+- Vorregistrierungen mit QR-Code-Versand per E-Mail (Einzel- & Gruppenregistrierung)
+- **Host-Portal** — Gastgeber können sich einloggen, Besucher einsehen und Vorregistrierungen selbst erstellen
+- **Auto-Checkout** täglich um 19:00 Uhr (Uhrzeit konfigurierbar in Superadmin-Einstellungen)
+- **Audit-Log** — 90 Tage Aufbewahrung, Download als Tagesprotokoll-Datei, Compliance-Bericht als CSV
 - Badge-Druck als PDF (A6) und Etikettendrucker (Brother QL-820NWB)
 - Evakuierungsliste in Echtzeit, nach Standort gruppiert
 - Standortbasierte Zugriffskontrolle für Empfangs-Benutzer
 - GDPR-konforme automatische Datenanonymisierung
 - Datenschutzerklärung-Unterschrift am Kiosk (Canvas)
 - E-Mail-Benachrichtigungen (STARTTLS / SSL / Keine)
+- Sperrliste (Watchlist) für gesperrte Personen
 
 ## Schnellstart (Entwicklung)
 
@@ -46,13 +50,13 @@ npm install
 npm run dev            # http://localhost:5173
 ```
 
-Vollständige Installationsanleitung für Produktionsumgebungen: [docs/installation.md](docs/installation.md)
+Vollständige Installationsanleitung: [docs/installation.md](docs/installation.md)
 
 ## Routen
 
 | Route | Beschreibung | Auth |
 |---|---|---|
-| `/login` | Anmeldung | Nein |
+| `/login` | Admin-Anmeldung | Nein |
 | `/dashboard` | Übersicht mit Statistiken | Ja |
 | `/visitors` | Besucherliste und Eincheck-Funktion | Ja |
 | `/hosts` | Gastgeberverwaltung | Ja |
@@ -60,4 +64,7 @@ Vollständige Installationsanleitung für Produktionsumgebungen: [docs/installat
 | `/evacuation` | Evakuierungsliste (Echtzeit) | Ja |
 | `/reports` | Berichte und CSV-Export | Ja (admin+) |
 | `/settings` | Konfiguration, Benutzer, E-Mail | Ja (admin+) |
+| `/audit-log` | Audit-Log & Compliance-Bericht | Ja (superadmin) |
 | `/kiosk` | Selbst-Eincheck-Kiosk | Nein |
+| `/host/login` | Gastgeber-Portal Anmeldung | Nein |
+| `/host` | Gastgeber-Portal | Host-Token |
