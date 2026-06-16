@@ -1,6 +1,6 @@
 # Besucherverwaltungssystem — Projektdokumentation
 
-> Erstellt: 15. Juni 2026 | Zuletzt aktualisiert: 15. Juni 2026 (Session 2)  
+> Erstellt: 15. Juni 2026 | Zuletzt aktualisiert: 16. Juni 2026  
 > Kunde: **abat AG**  
 > Domain: https://visitor.luwilab.work  
 > Server: /opt/visitor-mgmt
@@ -29,6 +29,7 @@
 18. [Umgebungsvariablen (.env)](#18-umgebungsvariablen-env)
 19. [Wichtige Befehle](#19-wichtige-befehle)
 20. [Fehlerbehebung](#20-fehlerbehebung)
+21. [Docker-Deployment](#21-docker-deployment)
 
 ---
 
@@ -160,7 +161,8 @@ Brother QL-820NWB (Etikettendrucker)
 │   │   │   ├── parking.js           # CRUD Parkplätze + Belegungsstatus (GET public)
 │   │   │   ├── users.js             # CRUD Benutzer + Standortzuweisung (superadmin)
 │   │   │   ├── settings.js          # System-Settings, GDPR-Cleanup, E-Mail-Test
-│   │   │   └── reports.js           # Berichte, Evakuierung (standortgefiltert), CSV
+│   │   │   ├── reports.js           # Berichte, Evakuierung (standortgefiltert), CSV
+│   │   │   └── watchlist.js         # CRUD Sperrliste
 │   │   ├── services/
 │   │   │   ├── badge.js             # PDF-Badge Generierung (PDFKit, A6 Landscape)
 │   │   │   ├── label-printer.js     # Brother QL-820NWB RAW TCP Etikettendruck
@@ -204,12 +206,15 @@ Brother QL-820NWB (Etikettendrucker)
     │       ├── PreRegistration.jsx  # Mit Gruppenregistrierung + Kennzeichen
     │       ├── Evacuation.jsx       # Nach Standort gruppiert, druckoptimiert
     │       ├── Reports.jsx
+    │       ├── Watchlist.jsx        # Sperrliste (gesperrte Personen)
     │       └── Settings.jsx         # Standorte, Besuchszwecke, Parkplätze,
     │                                #  Benutzer, Etikettendrucker, Datenschutz,
     │                                #  E-Mail (inkl. Verschlüsselung + Test)
     ├── dist/                        # Produktions-Build
     └── package.json
 ```
+
+> **Hinweis:** Außerdem existiert `docs/` im Projekt-Root mit dieser Dokumentation und der Installationsanleitung sowie `assets/` mit Schriftart und Logos.
 
 ---
 
@@ -491,6 +496,16 @@ Standardwerte: Besprechung, Lieferung, Interview, Wartung, Sonstiges
 | GET | `/visits/:visitId/documents` | Ja | Dokumente abrufen |
 | GET | `/documents/:docId/download` | Ja | Dokument herunterladen |
 
+### Sperrliste (Watchlist)
+
+| Methode | Pfad | Auth | Beschreibung |
+|---|---|---|---|
+| GET | `/watchlist` | Ja | Liste (?active=1) |
+| GET | `/watchlist/:id` | Ja | Einzelner Eintrag |
+| POST | `/watchlist` | Ja | Person sperren |
+| PUT | `/watchlist/:id` | Ja | Eintrag bearbeiten |
+| DELETE | `/watchlist/:id` | Ja | Sperre aufheben (Soft-Delete) |
+
 ---
 
 ## 7. Frontend & Seiten
@@ -508,6 +523,7 @@ Standardwerte: Besprechung, Lieferung, Interview, Wartung, Sonstiges
 | `/preregistrations` | Vorregistrierung | Ja | Einzel- und Gruppenregistrierung |
 | `/evacuation` | Evakuierung | Ja | Nach Standort gruppiert, Drucklayout |
 | `/reports` | Berichte | Ja | |
+| `/watchlist` | Sperrliste | Ja | Gesperrte Personen verwalten |
 | `/settings` | Einstellungen | Ja (admin+) | Alle Konfigurations-Tabs |
 
 ### Einstellungs-Tabs (Settings.jsx)
@@ -1017,13 +1033,24 @@ Cloudflare muss auf **Full (Strict)** SSL gestellt sein.
 
 ## 18. Umgebungsvariablen (.env)
 
-**Datei:** `/opt/visitor-mgmt/backend/.env`
+**Manuelle Installation:** `/opt/visitor-mgmt/backend/.env`  
+**Docker:** `/opt/visitor-mgmt/.env` (Projekt-Root, von `docker-compose.yml` geladen)
 
 ```env
+# Pflicht
+JWT_SECRET=<langer-zufälliger-string>   # openssl rand -hex 32
+APP_URL=https://visitor.luwilab.work     # Öffentliche URL — kein abschließender Slash!
+
+# Initialer Admin-Account (einmalig beim ersten Start, solange DB leer ist)
+ADMIN_EMAIL=admin@firma.de
+ADMIN_PASSWORD=<sicheres-passwort>
+ADMIN_NAME=Administrator
+
+# Nur manuelle Installation (Docker setzt diese automatisch)
 PORT=3001
-JWT_SECRET=<langer-zufälliger-string>
 DB_PATH=./data/visitors.db
 
+# E-Mail (optional — ohne SMTP werden Mails nur geloggt)
 SMTP_HOST=<smtp-server>
 SMTP_PORT=587
 SMTP_USER=<smtp-benutzer>
@@ -1031,21 +1058,31 @@ SMTP_PASS=<smtp-passwort>
 SMTP_SECURITY=starttls
 FROM_EMAIL=<absender@firma.de>
 COMPANY_NAME=<firmenname>
+
+# Nur Docker
+HTTP_PORT=80
 ```
 
 | Variable | Pflicht | Beschreibung |
 |---|---|---|
-| `PORT` | Ja | Backend-Port (3001) |
-| `JWT_SECRET` | **Ja** | Zufälliger langer String |
-| `DB_PATH` | Ja | SQLite-Datenbankpfad |
+| `JWT_SECRET` | **Ja** | Zufälliger langer String (`openssl rand -hex 32`) |
+| `APP_URL` | **Ja** | Öffentliche URL der App — wird für CORS-Prüfung verwendet |
+| `ADMIN_EMAIL` | **Ja** | E-Mail des initialen Admins (nur beim ersten Start) |
+| `ADMIN_PASSWORD` | **Ja** | Passwort des initialen Admins (nur beim ersten Start) |
+| `ADMIN_NAME` | Nein | Anzeigename des initialen Admins (Standard: `Administrator`) |
+| `PORT` | Nein | Backend-Port (Standard: 3001; Docker: intern, nicht exponiert) |
+| `DB_PATH` | Nein | SQLite-Pfad (Docker: via `docker-compose.yml` auf `/app/data/visitors.db` gesetzt) |
+| `HTTP_PORT` | Nein | Externer Port des Frontend-Containers (Standard: 80, nur Docker) |
 | `SMTP_HOST` | Nein | SMTP-Server |
 | `SMTP_PORT` | Nein | SMTP-Port |
 | `SMTP_USER` | Nein | SMTP-Benutzername |
 | `SMTP_PASS` | Nein | SMTP-Passwort / App-Passwort |
-| `SMTP_SECURITY` | Nein | `starttls` / `ssl` / `none` (Fallback, DB hat Vorrang) |
+| `SMTP_SECURITY` | Nein | `starttls` / `ssl` / `none` (Fallback, DB-Wert hat Vorrang) |
 | `FROM_EMAIL` | Nein | Absender-Adresse |
 | `COMPANY_NAME` | Nein | Firmenname (in Mails und Badge) |
 
+> `APP_URL` ist besonders wichtig: Das Backend prüft den `Origin`-Header aller Browser-Requests dagegen. Fehlt der Wert oder stimmt er nicht überein, blockiert CORS alle API-Aufrufe.
+>
 > `SMTP_SECURITY` aus der `.env` ist der Fallback — der Wert in `system_settings` hat immer Vorrang und ist ohne Neustart änderbar.
 
 ---
@@ -1075,6 +1112,35 @@ npm run build
 ```bash
 sqlite3 /opt/visitor-mgmt/backend/data/visitors.db \
   ".backup /root/backup-$(date +%Y%m%d).db"
+```
+
+### Docker-Befehle
+
+```bash
+# Starten (Images neu bauen + Container starten)
+docker compose up -d --build
+
+# Status aller Container
+docker compose ps
+
+# Live-Logs
+docker compose logs -f
+
+# Nur Backend-Logs
+docker compose logs -f backend
+
+# Nach .env-Änderung neu starten
+docker compose restart
+
+# Stoppen
+docker compose down
+
+# In Backend-Container einloggen
+docker compose exec backend sh
+
+# Datenbank-Backup (Docker)
+docker compose exec backend sqlite3 /app/data/visitors.db \
+  ".backup /app/data/backup-$(date +%Y%m%d).db"
 ```
 
 ### API testen
@@ -1142,9 +1208,81 @@ Cloudflare SSL-Modus muss **Full (Strict)** sein.
 
 Hard-Reload: `Ctrl+Shift+R`. JS/CSS-Dateien haben Content-Hash im Namen — Caching-Probleme treten normalerweise nicht auf.
 
+### Docker: API-Aufrufe schlagen fehl (CORS-Fehler im Browser)
+
+`APP_URL` in der `.env` prüfen — muss exakt mit der öffentlichen Domain übereinstimmen (inkl. Schema, ohne abschließenden Slash):
+
+```
+APP_URL=https://visitor.luwilab.work
+```
+
+Nach Änderung: `docker compose restart`
+
+### Docker: Frontend startet nicht / bleibt bei "Waiting"
+
+Backend-Healthcheck läuft noch. Warten bis `docker compose ps` den Backend-Status als `healthy` zeigt (dauert bis zu 30 Sekunden beim ersten Start).
+
+```bash
+docker compose logs backend   # Fehler im Backend prüfen
+```
+
+### Docker: Login funktioniert nicht beim ersten Start
+
+Prüfen ob der initiale Admin-Account angelegt wurde:
+
+```bash
+docker compose exec backend sqlite3 /app/data/visitors.db \
+  "SELECT id, name, email, role FROM users;"
+```
+
+Ist die Tabelle leer, wurde die `.env` beim ersten Start nicht geladen. `.env` prüfen und Container neu erstellen:
+
+```bash
+docker compose down && docker compose up -d
+```
+
+---
+
+## 21. Docker-Deployment
+
+Siehe [docs/installation-docker.md](installation-docker.md) für die vollständige Anleitung.
+
+### Architektur (Docker)
+
+```
+Browser
+   │  HTTPS (via Cloudflare oder Nginx auf Host)
+   ▼
+frontend-Container (Nginx :80)
+   ├── /          → React SPA (statische Dateien im Container)
+   ├── /api/      → Proxy → backend:3001 (internes Docker-Netz)
+   └── /uploads/  → Proxy → backend:3001
+
+backend-Container (Node.js :3001) — nicht nach außen exponiert
+   └── SQLite → Docker Volume "db_data"
+
+Docker Volumes:
+   db_data   → /app/data/visitors.db
+   uploads   → /app/uploads/
+```
+
+### Healthcheck
+
+Der Backend-Container hat einen eingebauten Healthcheck auf `/api/health`. Das Frontend wartet mit dem Start, bis der Backend-Container als `healthy` gilt (Intervall: 10 s, max. 5 Versuche, Start-Wartezeit: 15 s).
+
+### Updates einspielen (Docker)
+
+```bash
+git pull
+docker compose up -d --build
+docker image prune -f
+```
+
 ---
 
 ## Dateipfade auf einen Blick
+
+### Manuelle Installation
 
 | Was | Pfad |
 |---|---|
@@ -1157,5 +1295,15 @@ Hard-Reload: `Ctrl+Shift+R`. JS/CSS-Dateien haben Content-Hash im Namen — Cach
 | Nginx-Konfiguration | `/etc/nginx/sites-available/visitor.luwilab.work` |
 | SSL-Zertifikat | `/etc/ssl/visitor-mgmt/cert.pem` |
 | Systemd-Service | `/etc/systemd/system/visitor-mgmt.service` |
-| Zugangsdaten | `/root/visitor-mgmt-credentials.txt` |
-| Diese Dokumentation | `/root/visitor-mgmt-dokumentation.md` |
+| Dokumentation | `/opt/visitor-mgmt/docs/` |
+| Assets (Logos, Font) | `/opt/visitor-mgmt/assets/` |
+
+### Docker
+
+| Was | Pfad |
+|---|---|
+| Projekt-Root | `/opt/visitor-mgmt/` |
+| Umgebungsvariablen | `/opt/visitor-mgmt/.env` |
+| Docker Compose | `/opt/visitor-mgmt/docker-compose.yml` |
+| Datenbank (Volume) | Docker Volume `visitor-mgmt_db_data` |
+| Uploads (Volume) | Docker Volume `visitor-mgmt_uploads` |
