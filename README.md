@@ -6,7 +6,8 @@ Vollständiges, webbasiertes Besucherverwaltungssystem für Unternehmen mit Reac
 
 | Dokument | Beschreibung |
 |---|---|
-| [Installationsanleitung](docs/installation.md) | Schritt-für-Schritt-Setup auf einem Ubuntu/Debian-Server |
+| [Docker-Installation](docs/installation-docker.md) | **Empfohlen** — Setup mit Docker & Docker Compose |
+| [Manuelle Installation](docs/installation.md) | Setup direkt auf Ubuntu/Debian mit Nginx & systemd |
 | [Projektdokumentation](docs/dokumentation.md) | Vollständige technische Dokumentation: Architektur, API, DB-Schema, Features |
 
 ## Tech Stack
