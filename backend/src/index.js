@@ -66,6 +66,9 @@ app.use('/api/settings', settingsRoutes);
 const parkingRoutes = require('./routes/parking');
 app.use('/api/parking', parkingRoutes);
 
+const watchlistRoutes = require('./routes/watchlist');
+app.use('/api/watchlist', watchlistRoutes);
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

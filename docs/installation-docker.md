@@ -55,9 +55,14 @@ nano .env
 `.env` ausfüllen:
 
 ```env
-PORT=3001
+# Pflichtfelder
 JWT_SECRET=<langer-zufälliger-string>    # openssl rand -hex 32
-DB_PATH=/app/data/visitors.db
+APP_URL=https://deine-domain.de          # Öffentliche URL — KEIN abschließender Slash!
+
+# Initialer Admin-Account (nur beim ersten Start, solange DB leer ist)
+ADMIN_EMAIL=admin@firma.de
+ADMIN_PASSWORD=<sicheres-passwort>
+ADMIN_NAME=Administrator
 
 # Optionaler HTTP-Port des Frontends (Standard: 80)
 HTTP_PORT=80
@@ -72,6 +77,8 @@ COMPANY_NAME=<Firmenname>
 ```
 
 > **JWT_SECRET** generieren: `openssl rand -hex 32`
+>
+> **APP_URL ist Pflicht für Produktion.** Das Backend prüft den `Origin`-Header aller Browser-Requests gegen diese URL. Stimmt die URL nicht überein, blockiert CORS alle API-Aufrufe und die App zeigt nur leere Seiten.
 
 ---
 
