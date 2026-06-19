@@ -5,7 +5,6 @@ function getConfig() {
   const keys = [
     'ldap_enabled', 'ldap_url', 'ldap_bind_dn', 'ldap_bind_password',
     'ldap_base_dn', 'ldap_filter', 'ldap_attr_name', 'ldap_attr_email',
-    'ldap_attr_department', 'ldap_attr_phone',
   ];
   const cfg = {};
   keys.forEach(k => {
@@ -60,13 +59,11 @@ async function syncHosts() {
 
     const attrName = cfg.ldap_attr_name || 'displayName';
     const attrEmail = cfg.ldap_attr_email || 'mail';
-    const attrDept = cfg.ldap_attr_department || 'department';
-    const attrPhone = cfg.ldap_attr_phone || 'telephoneNumber';
 
     const entries = await searchAll(client, cfg.ldap_base_dn, {
       filter: cfg.ldap_filter || '(objectClass=user)',
       scope: 'sub',
-      attributes: ['dn', attrName, attrEmail, attrDept, attrPhone],
+      attributes: ['dn', attrName, attrEmail],
     });
 
     let synced = 0;
@@ -75,19 +72,17 @@ async function syncHosts() {
     for (const entry of entries) {
       const name = entry[attrName] || entry.cn || null;
       const email = entry[attrEmail] || null;
-      const department = entry[attrDept] || null;
-      const phone = entry[attrPhone] || null;
       const dn = entry.dn;
 
       if (!email || !name) { skipped++; continue; }
 
       const existing = db.prepare('SELECT id FROM hosts WHERE email = ? OR ldap_dn = ?').get(email, dn);
       if (existing) {
-        db.prepare('UPDATE hosts SET name=?, email=?, department=?, phone=?, ldap_dn=?, active=1 WHERE id=?')
-          .run(name, email, department, phone, dn, existing.id);
+        db.prepare('UPDATE hosts SET name=?, email=?, ldap_dn=?, active=1 WHERE id=?')
+          .run(name, email, dn, existing.id);
       } else {
-        db.prepare('INSERT INTO hosts (name, email, department, phone, ldap_dn, active) VALUES (?,?,?,?,?,1)')
-          .run(name, email, department, phone, dn);
+        db.prepare('INSERT INTO hosts (name, email, ldap_dn, active) VALUES (?,?,?,1)')
+          .run(name, email, dn);
       }
       synced++;
     }

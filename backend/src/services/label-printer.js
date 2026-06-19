@@ -2,10 +2,12 @@ const net = require('net');
 const { createCanvas, loadImage } = require('canvas');
 const QRCode = require('qrcode');
 
-// DK-11202: 62×100mm, printable area 696×1109 dots at 300dpi
-const PRINT_WIDTH_PX  = 696;
-const PRINT_HEIGHT_PX = 1109;
-const BYTES_PER_ROW   = Math.ceil(PRINT_WIDTH_PX / 8); // 87
+// DK-11202: 62×100mm — Brother QL-820NWB at 300dpi
+// 62mm × (300/25.4) = 732 → 720 printable dots (90 bytes/row)
+// 100mm × (300/25.4) = 1181 raster lines
+const PRINT_WIDTH_PX  = 720;
+const PRINT_HEIGHT_PX = 1181;
+const BYTES_PER_ROW   = Math.ceil(PRINT_WIDTH_PX / 8); // 90
 
 // ── Brother QL raster command builder ─────────────────────────────────────────
 
@@ -76,8 +78,9 @@ function buildRasterData(imageData, widthPx, heightPx) {
 // ── Label image renderer ───────────────────────────────────────────────────────
 
 async function renderLabelImage({ visitorName, company, hostName, date, time, badgeNumber }) {
-  const W = PRINT_WIDTH_PX;
-  const H = PRINT_HEIGHT_PX;
+  const W = PRINT_WIDTH_PX;  // 720
+  const H = PRINT_HEIGHT_PX; // 1181
+  const PAD = 24;
   const canvas = createCanvas(W, H);
   const ctx = canvas.getContext('2d');
 
@@ -85,95 +88,108 @@ async function renderLabelImage({ visitorName, company, hostName, date, time, ba
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, W, H);
 
-  // ── Header bar ──────────────────────────────────────────────────────────────
-  ctx.fillStyle = '#004B87'; // abat blau
-  ctx.fillRect(0, 0, W, 110);
+  // ── Header bar (blue, 115px) ─────────────────────────────────────────────────
+  ctx.fillStyle = '#004B87';
+  ctx.fillRect(0, 0, W, 115);
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 56px sans-serif';
+  ctx.font = 'bold 54px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('BESUCHER', W / 2, 78);
+  ctx.fillText('BESUCHER', W / 2, 80);
 
-  // ── QR code ─────────────────────────────────────────────────────────────────
-  let qrSize = 0;
+  // ── QR code (190×190, top-right of content area) ─────────────────────────────
+  const QR_SIZE = 190;
+  const QR_X = W - QR_SIZE - PAD;
+  const QR_Y = 125;
+  let hasQr = false;
   try {
-    const qrDataUrl = await QRCode.toDataURL(badgeNumber, { width: 200, margin: 1, color: { dark: '#000', light: '#fff' } });
+    const qrDataUrl = await QRCode.toDataURL(badgeNumber, { width: QR_SIZE, margin: 1, color: { dark: '#000', light: '#fff' } });
     const qrImg = await loadImage(qrDataUrl);
-    qrSize = 200;
-    ctx.drawImage(qrImg, W - qrSize - 20, 120, qrSize, qrSize);
+    ctx.drawImage(qrImg, QR_X, QR_Y, QR_SIZE, QR_SIZE);
+    hasQr = true;
   } catch (_) {}
 
   // ── Visitor name ─────────────────────────────────────────────────────────────
-  const nameAreaW = qrSize > 0 ? W - qrSize - 50 : W - 40;
+  const nameAreaW = hasQr ? QR_X - PAD * 2 : W - PAD * 2;
   ctx.textAlign = 'left';
   ctx.fillStyle = '#111827';
-  ctx.font = 'bold 52px sans-serif';
-  // Shrink font if name is long
-  let nameFontSize = 52;
-  while (ctx.measureText(visitorName).width > nameAreaW && nameFontSize > 28) {
-    nameFontSize -= 4;
+  let nameFontSize = 48;
+  ctx.font = `bold ${nameFontSize}px sans-serif`;
+  while (ctx.measureText(visitorName).width > nameAreaW && nameFontSize > 26) {
+    nameFontSize -= 3;
     ctx.font = `bold ${nameFontSize}px sans-serif`;
   }
-  ctx.fillText(visitorName, 20, 175);
+  ctx.fillText(visitorName, PAD, 180);
 
   // ── Company ──────────────────────────────────────────────────────────────────
   if (company) {
-    ctx.font = '36px sans-serif';
+    ctx.font = '32px sans-serif';
     ctx.fillStyle = '#374151';
-    ctx.fillText(company, 20, 218);
+    // Truncate if too wide
+    let companyText = company;
+    while (ctx.measureText(companyText).width > nameAreaW && companyText.length > 4) {
+      companyText = companyText.slice(0, -1);
+    }
+    if (companyText !== company) companyText += '…';
+    ctx.fillText(companyText, PAD, 222);
   }
 
   // ── Divider ──────────────────────────────────────────────────────────────────
-  ctx.strokeStyle = '#e5e7eb';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(20, 345);
-  ctx.lineTo(W - 20, 345);
-  ctx.stroke();
+  const div = (y) => {
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(PAD, y);
+    ctx.lineTo(W - PAD, y);
+    ctx.stroke();
+  };
+
+  div(355);
 
   // ── Host section ─────────────────────────────────────────────────────────────
-  ctx.font = '26px sans-serif';
+  ctx.font = '24px sans-serif';
   ctx.fillStyle = '#6b7280';
-  ctx.fillText('BESUCHT BEI', 20, 390);
+  ctx.fillText('BESUCHT BEI', PAD, 395);
 
-  ctx.font = 'bold 38px sans-serif';
+  ctx.font = 'bold 36px sans-serif';
   ctx.fillStyle = '#111827';
-  ctx.fillText(hostName || '–', 20, 432);
+  let hostText = hostName || '–';
+  while (ctx.measureText(hostText).width > W - PAD * 2 && hostText.length > 4) {
+    hostText = hostText.slice(0, -1);
+  }
+  if (hostText !== (hostName || '–')) hostText += '…';
+  ctx.fillText(hostText, PAD, 440);
+
+  div(490);
 
   // ── Date / time ──────────────────────────────────────────────────────────────
-  ctx.font = '26px sans-serif';
+  ctx.font = '24px sans-serif';
   ctx.fillStyle = '#6b7280';
-  ctx.fillText('DATUM & UHRZEIT', 20, 500);
+  ctx.fillText('DATUM & UHRZEIT', PAD, 530);
 
-  ctx.font = '34px sans-serif';
+  ctx.font = '32px sans-serif';
   ctx.fillStyle = '#111827';
-  ctx.fillText(`${date}   ${time} Uhr`, 20, 540);
+  ctx.fillText(`${date}   ${time} Uhr`, PAD, 572);
 
-  // ── Divider ──────────────────────────────────────────────────────────────────
-  ctx.strokeStyle = '#e5e7eb';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(20, 575);
-  ctx.lineTo(W - 20, 575);
-  ctx.stroke();
+  div(615);
 
   // ── Badge number ─────────────────────────────────────────────────────────────
-  ctx.font = '26px sans-serif';
+  ctx.font = '24px sans-serif';
   ctx.fillStyle = '#6b7280';
-  ctx.fillText('BADGE-NR.', 20, 620);
+  ctx.fillText('BADGE-NR.', PAD, 655);
 
-  ctx.font = 'bold 52px sans-serif';
+  ctx.font = 'bold 50px sans-serif';
   ctx.fillStyle = '#004B87';
-  ctx.fillText(badgeNumber || '', 20, 672);
+  ctx.fillText(badgeNumber || '', PAD, 715);
 
-  // ── Footer ───────────────────────────────────────────────────────────────────
+  // ── Footer bar ───────────────────────────────────────────────────────────────
   ctx.fillStyle = '#f3f4f6';
-  ctx.fillRect(0, H - 60, W, 60);
+  ctx.fillRect(0, H - 70, W, 70);
 
-  ctx.font = '22px sans-serif';
+  ctx.font = '20px sans-serif';
   ctx.fillStyle = '#9ca3af';
   ctx.textAlign = 'center';
-  ctx.fillText('Bitte tragen Sie diesen Ausweis sichtbar.', W / 2, H - 22);
+  ctx.fillText('Bitte tragen Sie diesen Ausweis sichtbar.', W / 2, H - 24);
 
   return ctx.getImageData(0, 0, W, H).data;
 }

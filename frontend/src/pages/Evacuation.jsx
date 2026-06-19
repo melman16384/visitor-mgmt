@@ -139,7 +139,7 @@ export default function Evacuation() {
           <button onClick={() => window.print()}
             className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2.5 rounded-xl text-sm shadow-sm transition-colors">
             <Printer size={16} />
-            {t('evacuation.print')}
+            {t('evacuation.printBtn')}
           </button>
         </div>
       </div>

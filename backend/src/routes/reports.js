@@ -90,7 +90,7 @@ router.get('/evacuation', authenticate, (req, res) => {
   const rows = db.prepare(`
     SELECT v.id, v.badge_number, v.checked_in_at, v.purpose,
            vi.first_name, vi.last_name, vi.company,
-           h.name as host_name, h.phone as host_phone,
+           h.name as host_name,
            l.id as location_id, l.name as location_name, l.address as location_address
     FROM visits v
     JOIN visitors vi ON v.visitor_id = vi.id
@@ -126,7 +126,7 @@ router.get('/export', authenticate, (req, res) => {
     SELECT v.id, v.badge_number, v.purpose, v.status, v.notes,
            v.checked_in_at, v.checked_out_at,
            vi.first_name, vi.last_name, vi.company, vi.email,
-           h.name as host_name, h.department,
+           h.name as host_name,
            l.name as location_name
     FROM visits v
     JOIN visitors vi ON v.visitor_id = vi.id
@@ -138,14 +138,14 @@ router.get('/export', authenticate, (req, res) => {
 
   if (format === 'csv') {
     const headers = ['ID', 'Badge-Nr', 'Vorname', 'Nachname', 'Firma', 'E-Mail',
-      'Gastgeber', 'Abteilung', 'Standort', 'Zweck', 'Status',
+      'Gastgeber', 'Standort', 'Zweck', 'Status',
       'Eingecheckt', 'Ausgecheckt', 'Notizen'];
 
     const csvLines = [headers.join(';')];
     for (const r of rows) {
       csvLines.push([
         r.id, r.badge_number, r.first_name, r.last_name, r.company || '', r.email || '',
-        r.host_name || '', r.department || '', r.location_name || '', r.purpose || '',
+        r.host_name || '', r.location_name || '', r.purpose || '',
         r.status === 'active' ? 'Anwesend' : 'Ausgecheckt',
         r.checked_in_at ? new Date(r.checked_in_at).toLocaleString('de-DE') : '',
         r.checked_out_at ? new Date(r.checked_out_at).toLocaleString('de-DE') : '',

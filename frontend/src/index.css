@@ -64,3 +64,9 @@
 .kiosk-delay-3 { animation-delay: 0.20s; }
 .kiosk-delay-4 { animation-delay: 0.27s; }
 .kiosk-delay-5 { animation-delay: 0.34s; }
+
+/* ── Print utilities ─────────────────────────────────────────────────────── */
+
+@media print {
+  .no-print { display: none !important; }
+}

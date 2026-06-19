@@ -7,6 +7,7 @@ import StatCard from '../components/StatCard';
 import client from '../api/client';
 import { showToast } from '../components/Layout';
 import { useTranslation } from 'react-i18next';
+import VisitorCheckinForm from '../components/VisitorCheckinForm';
 
 function StatusBadge({ status }) {
   const { t } = useTranslation();
@@ -26,14 +27,11 @@ function InitialsAvatar({ name }) {
   );
 }
 
-function QuickCheckinModal({ onClose, onSuccess }) {
+function CheckinModal({ onClose, onSuccess }) {
   const { t } = useTranslation();
   const [hosts, setHosts] = useState([]);
   const [purposes, setPurposes] = useState([]);
-  const [form, setForm] = useState({ first_name: '', last_name: '', company: '', host_id: '', purpose: '' });
-  const [hostManualName, setHostManualName] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const isManualHost = form.host_id === '_manual';
 
   useEffect(() => {
     Promise.all([client.get('/hosts'), client.get('/visit-purposes')]).then(([h, p]) => {
@@ -42,17 +40,10 @@ function QuickCheckinModal({ onClose, onSuccess }) {
     });
   }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!form.first_name || !form.last_name) { showToast(t('visitors.form.firstName') + ' + ' + t('visitors.form.lastName'), 'error'); return; }
-    if (isManualHost && !hostManualName.trim()) { showToast(t('preregistrations.form.hostNameError'), 'error'); return; }
+  const handleSubmit = async (form) => {
     setSubmitting(true);
     try {
-      await client.post('/visitors', {
-        ...form,
-        host_id: isManualHost ? null : (form.host_id || null),
-        host_name_free: isManualHost ? hostManualName.trim() : null,
-      });
+      await client.post('/visitors', form);
       showToast(t('visitors.checkedIn'));
       onSuccess();
       onClose();
@@ -63,62 +54,18 @@ function QuickCheckinModal({ onClose, onSuccess }) {
     }
   };
 
-  const inp = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500';
-
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white rounded-t-2xl">
           <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
             <UserPlus size={16} className="text-primary-600" /> {t('dashboard.checkinBtn')}
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
         </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">{t('visitors.form.firstName')} *</label>
-              <input className={inp} value={form.first_name} onChange={e => setForm(f => ({ ...f, first_name: e.target.value }))} placeholder="Max" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">{t('visitors.form.lastName')} *</label>
-              <input className={inp} value={form.last_name} onChange={e => setForm(f => ({ ...f, last_name: e.target.value }))} placeholder="Muster" />
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">{t('visitors.form.company')}</label>
-            <input className={inp} value={form.company} onChange={e => setForm(f => ({ ...f, company: e.target.value }))} placeholder="Muster GmbH" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">{t('visitors.form.host')}</label>
-            <select className={inp} value={form.host_id} onChange={e => { setForm(f => ({ ...f, host_id: e.target.value })); setHostManualName(''); }}>
-              <option value="">{t('common.selectHost')}</option>
-              {hosts.map(h => <option key={h.id} value={h.id}>{h.name}{h.department ? ` (${h.department})` : ''}</option>)}
-              <option value="_manual">{t('common.manualEntry')}</option>
-            </select>
-            {isManualHost && (
-              <input className={`${inp} mt-2`} value={hostManualName}
-                onChange={e => setHostManualName(e.target.value)}
-                placeholder={t('visitors.form.hostPlaceholder')} autoFocus />
-            )}
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">{t('visitors.form.purpose')}</label>
-            <select className={inp} value={form.purpose} onChange={e => setForm(f => ({ ...f, purpose: e.target.value }))}>
-              <option value="">{t('common.selectPurpose')}</option>
-              {purposes.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-            </select>
-          </div>
-          <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 border border-gray-300 text-gray-700 font-medium px-4 py-2 rounded-lg text-sm hover:bg-gray-50">
-              {t('common.cancel')}
-            </button>
-            <button type="submit" disabled={submitting} className="flex-1 bg-primary-600 hover:bg-primary-700 text-white font-semibold px-4 py-2 rounded-lg text-sm disabled:opacity-50 flex items-center justify-center gap-2">
-              <UserPlus size={14} />
-              {submitting ? t('common.loading') : t('common.checkin')}
-            </button>
-          </div>
-        </form>
+        <div className="p-6">
+          <VisitorCheckinForm onSubmit={handleSubmit} hosts={hosts} purposes={purposes} loading={submitting} />
+        </div>
       </div>
     </div>
   );
@@ -185,7 +132,7 @@ export default function Dashboard() {
 
   return (
     <div className="p-6 space-y-6">
-      {showCheckin && <QuickCheckinModal onClose={() => setShowCheckin(false)} onSuccess={loadData} />}
+      {showCheckin && <CheckinModal onClose={() => setShowCheckin(false)} onSuccess={loadData} />}
 
       <div className="flex items-start justify-between">
         <div>

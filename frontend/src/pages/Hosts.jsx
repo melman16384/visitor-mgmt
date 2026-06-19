@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit2, Trash2, Search, Phone, Mail, Building, Key } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, Mail, Building, Key } from 'lucide-react';
 import Modal from '../components/Modal';
 import client from '../api/client';
 import { showToast } from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 
 function HostForm({ initial, onSubmit, locations, loading }) {
-  const [form, setForm] = useState(initial || { name: '', email: '', phone: '', department: '', location_id: '' });
+  const [form, setForm] = useState(initial || { name: '', email: '', location_id: '' });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const handleSubmit = (e) => { e.preventDefault(); onSubmit(form); };
@@ -22,18 +22,6 @@ function HostForm({ initial, onSubmit, locations, loading }) {
         <label className="block text-sm font-medium text-gray-700 mb-1">E-Mail *</label>
         <input type="email" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
           value={form.email} onChange={e => set('email', e.target.value)} required placeholder="max@firma.de" />
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Telefon</label>
-          <input type="tel" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-            value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+49 30 ..." />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Abteilung</label>
-          <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-            value={form.department} onChange={e => set('department', e.target.value)} placeholder="IT, HR, Vertrieb..." />
-        </div>
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Standort</label>
@@ -134,9 +122,6 @@ export default function Hosts() {
     }
   };
 
-  const deptColors = { IT: 'bg-blue-100 text-blue-700', Vertrieb: 'bg-green-100 text-green-700', HR: 'bg-purple-100 text-purple-700', Einkauf: 'bg-orange-100 text-orange-700', Geschäftsführung: 'bg-red-100 text-red-700', Marketing: 'bg-pink-100 text-pink-700' };
-  const getDeptColor = (dept) => deptColors[dept] || 'bg-gray-100 text-gray-600';
-
   return (
     <div className="p-6 space-y-5">
       <div className="flex items-center justify-between">
@@ -153,7 +138,7 @@ export default function Hosts() {
       <div className="relative max-w-md">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Suche nach Name, E-Mail, Abteilung..."
+          placeholder="Suche nach Name oder E-Mail..."
           className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
       </div>
 
@@ -162,19 +147,18 @@ export default function Hosts() {
           <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
             <tr>
               <th className="text-left px-6 py-3">Name</th>
-              <th className="text-left px-6 py-3">Kontakt</th>
-              <th className="text-left px-6 py-3">Abteilung</th>
+              <th className="text-left px-6 py-3">E-Mail</th>
               <th className="text-left px-6 py-3">Standort</th>
               <th className="px-6 py-3"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
             {loading ? (
-              <tr><td colSpan={5} className="text-center py-16">
+              <tr><td colSpan={4} className="text-center py-16">
                 <div className="inline-block w-6 h-6 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
               </td></tr>
             ) : hosts.length === 0 ? (
-              <tr><td colSpan={5} className="text-center py-16 text-gray-400">Keine Gastgeber gefunden</td></tr>
+              <tr><td colSpan={4} className="text-center py-16 text-gray-400">Keine Gastgeber gefunden</td></tr>
             ) : hosts.map(h => (
               <tr key={h.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-6 py-4">
@@ -186,21 +170,9 @@ export default function Hosts() {
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-1.5 text-gray-600">
-                      <Mail size={12} /><span>{h.email}</span>
-                    </div>
-                    {h.phone && <div className="flex items-center gap-1.5 text-gray-400">
-                      <Phone size={12} /><span>{h.phone}</span>
-                    </div>}
+                  <div className="flex items-center gap-1.5 text-gray-600">
+                    <Mail size={12} /><span>{h.email}</span>
                   </div>
-                </td>
-                <td className="px-6 py-4">
-                  {h.department && (
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getDeptColor(h.department)}`}>
-                      {h.department}
-                    </span>
-                  )}
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-1.5 text-gray-500">

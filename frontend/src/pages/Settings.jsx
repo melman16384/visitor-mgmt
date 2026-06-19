@@ -910,8 +910,6 @@ function LdapTab() {
     ldap_filter: '(objectClass=user)',
     ldap_attr_name: 'displayName',
     ldap_attr_email: 'mail',
-    ldap_attr_department: 'department',
-    ldap_attr_phone: 'telephoneNumber',
   });
   const [showPw, setShowPw] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -1038,8 +1036,6 @@ function LdapTab() {
           {[
             { key: 'ldap_attr_name', label: 'Name', placeholder: 'displayName' },
             { key: 'ldap_attr_email', label: 'E-Mail', placeholder: 'mail' },
-            { key: 'ldap_attr_department', label: 'Abteilung', placeholder: 'department' },
-            { key: 'ldap_attr_phone', label: 'Telefon', placeholder: 'telephoneNumber' },
           ].map(({ key, label: lbl, placeholder }) => (
             <div key={key}>
               <label className={label}>{lbl}</label>

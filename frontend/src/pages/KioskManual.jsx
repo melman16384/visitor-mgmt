@@ -220,7 +220,7 @@ export default function KioskManual() {
               onChange={e => { setForm(f => ({ ...f, host_id: e.target.value })); setHostManualName(''); }}
               className={inp(`bg-white ${errors.host_id ? 'border-red-400' : 'border-abat-hellgrau focus:border-abat-blau'}`)}>
               <option value="">{t('hostPlaceholder')}</option>
-              {hosts.map(h => <option key={h.id} value={h.id}>{h.name}{h.department ? ` (${h.department})` : ''}</option>)}
+              {hosts.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
               <option value="_manual">{t('hostManualOption')}</option>
             </select>
             {isManualHost && (
