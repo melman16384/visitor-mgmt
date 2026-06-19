@@ -1177,7 +1177,7 @@ function MicrosoftSsoTab() {
           <ol className="list-decimal list-inside text-blue-700 space-y-1 text-xs">
             <li>Öffnen Sie das <strong>Azure Portal</strong> → App-Registrierungen → Neue Registrierung</li>
             <li>Name: z. B. „Visitor Management", Kontotyp: <em>Nur dieser Organisation</em></li>
-            <li>Redirect-URI: <code className="bg-blue-100 px-1 rounded">https://visitor.luwilab.work/api/host-portal/auth/microsoft/callback</code></li>
+            <li>Redirect-URI: <code className="bg-blue-100 px-1 rounded">{window.location.origin}/api/host-portal/auth/microsoft/callback</code></li>
             <li>Nach der Erstellung: Client-ID und Tenant-ID aus der Übersicht kopieren</li>
             <li>Unter <em>Zertifikate &amp; Geheimnisse</em>: Neues Client-Secret erstellen und kopieren</li>
             <li>Unter <em>API-Berechtigungen</em>: <code className="bg-blue-100 px-1 rounded">openid profile email</code> sicherstellen</li>
