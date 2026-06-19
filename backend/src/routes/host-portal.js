@@ -59,7 +59,7 @@ function parseIdToken(idToken) {
 
 function getFrontendUrl(req) {
   if (process.env.FRONTEND_URL) return process.env.FRONTEND_URL;
-  const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+  const proto = req.headers['x-forwarded-proto'] || 'https';
   const host  = req.headers['x-forwarded-host'] || req.headers.host;
   return `${proto}://${host}`;
 }
