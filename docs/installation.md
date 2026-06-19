@@ -272,6 +272,44 @@ Standard-Login nach erstem Start (aus `backend/src/db/database.js`):
 
 ---
 
+## 8a. Zugangsdaten zurücksetzen
+
+Falls der Login nicht funktioniert oder Passwörter vergessen wurden, können sie direkt per SQLite zurückgesetzt werden — kein Serverneustart nötig.
+
+### Vorhandene Benutzer anzeigen
+
+```bash
+sqlite3 /opt/visitor-mgmt/backend/data/visitors.db \
+  "SELECT id, name, email, role, active FROM users;"
+```
+
+### Passwort eines einzelnen Accounts zurücksetzen
+
+```bash
+cd /opt/visitor-mgmt/backend
+
+# Passwort und E-Mail anpassen:
+NEUES_PW="DeinNeuesPasswort123!"
+EMAIL="superadmin@abat.de"
+
+HASH=$(node -e "const b=require('./node_modules/bcryptjs'); b.hash('$NEUES_PW',12).then(h=>process.stdout.write(h))")
+sqlite3 data/visitors.db "UPDATE users SET password_hash='$HASH' WHERE email='$EMAIL';"
+```
+
+### Passwort aller Accounts auf einmal zurücksetzen
+
+```bash
+cd /opt/visitor-mgmt/backend
+
+NEUES_PW="DeinNeuesPasswort123!"
+HASH=$(node -e "const b=require('./node_modules/bcryptjs'); b.hash('$NEUES_PW',12).then(h=>process.stdout.write(h))")
+sqlite3 data/visitors.db "UPDATE users SET password_hash='$HASH';"
+```
+
+Danach mit der jeweiligen E-Mail-Adresse und dem neuen Passwort einloggen. Passwort anschließend unter **Einstellungen → Passwort ändern** personalisieren.
+
+---
+
 ## 9. Cloudflare konfigurieren
 
 1. DNS-Eintrag: `A deine-domain.de → Server-IP` (Proxy aktiviert = orange Wolke)
