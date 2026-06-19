@@ -204,6 +204,21 @@ if (!hostsInfo.find(c => c.name === 'password_hash')) {
 if (!hostsInfo.find(c => c.name === 'ldap_dn')) {
   db.exec('ALTER TABLE hosts ADD COLUMN ldap_dn TEXT');
 }
+if (!hostsInfo.find(c => c.name === 'failed_login_attempts')) {
+  db.exec('ALTER TABLE hosts ADD COLUMN failed_login_attempts INTEGER DEFAULT 0');
+}
+if (!hostsInfo.find(c => c.name === 'locked_until')) {
+  db.exec('ALTER TABLE hosts ADD COLUMN locked_until DATETIME');
+}
+
+// Add lockout columns to users if missing
+const usersInfo = db.prepare("PRAGMA table_info(users)").all();
+if (!usersInfo.find(c => c.name === 'failed_login_attempts')) {
+  db.exec('ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER DEFAULT 0');
+}
+if (!usersInfo.find(c => c.name === 'locked_until')) {
+  db.exec('ALTER TABLE users ADD COLUMN locked_until DATETIME');
+}
 
 // Create initial admin user from env if no users exist yet
 const userCount = db.prepare('SELECT COUNT(*) as c FROM users').get();
