@@ -273,4 +273,69 @@ async function sendVisitorConfirmation(visitor, visit, host) {
   }
 }
 
-module.exports = { sendHostNotification, sendPreRegistrationQR, sendVisitorConfirmation };
+async function sendVisitorCheckout(visitor, visit, locationName) {
+  if (!visitor.email) return;
+  const transport = createTransport();
+  const company = process.env.COMPANY_NAME || 'abat AG';
+  const location = locationName || company;
+  const subject = `Vielen Dank für Ihren Besuch bei ${location}`;
+
+  const checkinDate  = new Date(visit.checked_in_at).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' });
+  const checkinTime  = new Date(visit.checked_in_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  const checkoutTime = new Date(visit.checked_out_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+
+  // Duration in minutes
+  const durationMs  = new Date(visit.checked_out_at) - new Date(visit.checked_in_at);
+  const durationMin = Math.round(durationMs / 60000);
+  const durationStr = durationMin >= 60
+    ? `${Math.floor(durationMin / 60)} Std. ${durationMin % 60} Min.`
+    : `${durationMin} Min.`;
+
+  const rows = [
+    detailRow('Datum', checkinDate),
+    detailRow('Ankunft', `${checkinTime} Uhr`),
+    detailRow('Abfahrt', `${checkoutTime} Uhr`),
+    detailRow('Aufenthaltsdauer', durationStr),
+    detailRow('Standort', location),
+  ].join('');
+
+  const content = `
+    <div style="text-align:center;margin-bottom:28px;">
+      <div style="display:inline-block;background:#DBEAFE;border-radius:50%;width:56px;height:56px;line-height:56px;font-size:28px;">👋</div>
+    </div>
+    <p style="margin:0 0 6px;font-size:20px;font-weight:700;color:#212529;text-align:center;">Auf Wiedersehen, ${visitor.first_name}!</p>
+    <p style="margin:0 0 28px;font-size:14px;color:#6C757D;line-height:1.7;text-align:center;">
+      Vielen Dank für Ihren Besuch bei <strong style="color:#343A40;">${location}</strong>.<br>
+      Wir hoffen, Ihr Besuch war angenehm und erfolgreich.
+    </p>
+    <div style="background:#F8F9FA;border:1px solid #E9ECEF;border-radius:10px;padding:6px 20px;margin:0 0 28px;">
+      <p style="margin:0;padding:14px 0 10px;font-size:11px;font-weight:700;color:#ADB5BD;text-transform:uppercase;letter-spacing:0.1em;">Besuchsübersicht</p>
+      <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+        ${rows}
+      </table>
+    </div>
+    <p style="margin:0;font-size:14px;color:#495057;line-height:1.7;">
+      Wir freuen uns, Sie bald wieder bei uns begrüßen zu dürfen.<br><br>
+      Freundliche Grüße,<br><strong style="color:#212529;">${company}</strong>
+    </p>
+  `;
+
+  const html = emailShell(content, company);
+
+  if (!transport) {
+    console.log(`[EMAIL] Checkout-Danke an ${visitor.email}: ${visitor.first_name} ${visitor.last_name} ausgecheckt um ${checkoutTime}`);
+    return;
+  }
+  try {
+    await transport.sendMail({
+      from: `"${company} Besucherverwaltung" <${process.env.FROM_EMAIL || 'noreply@abat.de'}>`,
+      to: visitor.email,
+      subject,
+      html,
+    });
+  } catch (err) {
+    console.error('E-Mail-Fehler (Checkout):', err.message);
+  }
+}
+
+module.exports = { sendHostNotification, sendPreRegistrationQR, sendVisitorConfirmation, sendVisitorCheckout };
