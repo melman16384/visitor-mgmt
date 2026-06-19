@@ -160,7 +160,7 @@ router.get('/:id', authenticate, (req, res) => {
 // POST / - single registration
 router.post('/', authenticate, async (req, res) => {
   const { visitor_first_name, visitor_last_name, visitor_email, visitor_company,
-    host_id, location_id, expected_date, expected_time, purpose, notes, group_id } = req.body;
+    host_id, host_name_free, location_id, expected_date, expected_time, purpose, notes, group_id } = req.body;
 
   if (!visitor_first_name || !visitor_last_name || !expected_date) {
     return res.status(400).json({ error: 'Name und Datum erforderlich' });
@@ -171,10 +171,10 @@ router.post('/', authenticate, async (req, res) => {
   const result = db.prepare(`
     INSERT INTO preregistrations
       (visitor_first_name, visitor_last_name, visitor_email, visitor_company,
-       host_id, location_id, expected_date, expected_time, purpose, qr_code, notes, group_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       host_id, host_name_free, location_id, expected_date, expected_time, purpose, qr_code, notes, group_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(visitor_first_name, visitor_last_name, visitor_email || null, visitor_company || null,
-    host_id || null, location_id || null, expected_date, expected_time || null,
+    host_id || null, host_name_free || null, location_id || null, expected_date, expected_time || null,
     purpose || null, qrCode, notes || null, group_id || null);
 
   const prereg = db.prepare('SELECT * FROM preregistrations WHERE id = ?').get(result.lastInsertRowid);
@@ -188,7 +188,7 @@ router.post('/', authenticate, async (req, res) => {
       const dateStr = new Date(expected_date).toLocaleDateString('de-DE');
       sendPreRegistrationQR(
         visitor_email, `${visitor_first_name} ${visitor_last_name}`,
-        qrBuffer, dateStr, host ? host.name : '',
+        qrBuffer, dateStr, host ? host.name : (host_name_free || ''),
         visitor.abat_id, location
       ).catch(console.error);
     } catch (e) { console.error('QR/email error:', e); }
@@ -201,7 +201,7 @@ router.post('/', authenticate, async (req, res) => {
 
 // POST /batch - group registration (Variante A)
 router.post('/batch', authenticate, async (req, res) => {
-  const { guests, host_id, location_id, expected_date, expected_time, purpose, notes, visitor_company } = req.body;
+  const { guests, host_id, host_name_free, location_id, expected_date, expected_time, purpose, notes, visitor_company } = req.body;
 
   if (!Array.isArray(guests) || guests.length === 0) {
     return res.status(400).json({ error: 'Mindestens ein Gast erforderlich' });
@@ -219,6 +219,7 @@ router.post('/batch', authenticate, async (req, res) => {
     : null;
 
   const host = host_id ? db.prepare('SELECT * FROM hosts WHERE id = ?').get(host_id) : null;
+  const hostDisplayName = host ? host.name : (host_name_free || '');
   const dateStr = expected_date ? new Date(expected_date).toLocaleDateString('de-DE') : '';
 
   const created = db.transaction(() => {
@@ -227,12 +228,12 @@ router.post('/batch', authenticate, async (req, res) => {
       const r = db.prepare(`
         INSERT INTO preregistrations
           (visitor_first_name, visitor_last_name, visitor_email, visitor_company,
-           host_id, location_id, expected_date, expected_time, purpose, qr_code, notes, group_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           host_id, host_name_free, location_id, expected_date, expected_time, purpose, qr_code, notes, group_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         g.visitor_first_name, g.visitor_last_name, g.visitor_email || null,
         g.visitor_company || visitor_company || null,
-        host_id || null, location_id || null, expected_date, expected_time || null,
+        host_id || null, host_name_free || null, location_id || null, expected_date, expected_time || null,
         purpose || null, qrCode, notes || null, groupId
       );
       return { id: r.lastInsertRowid, qrCode, email: g.visitor_email, name: `${g.visitor_first_name} ${g.visitor_last_name}`, firstName: g.visitor_first_name, lastName: g.visitor_last_name };
@@ -246,7 +247,7 @@ router.post('/batch', authenticate, async (req, res) => {
       const visitor = getOrCreateVisitor(entry.email, entry.firstName, entry.lastName, visitor_company || null);
       generateQR(entry.qrCode)
         .then(qrBuffer => sendPreRegistrationQR(
-          entry.email, entry.name, qrBuffer, dateStr, host ? host.name : '',
+          entry.email, entry.name, qrBuffer, dateStr, hostDisplayName,
           visitor.abat_id, location
         ))
         .catch(console.error);
