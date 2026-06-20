@@ -156,7 +156,7 @@ function authenticateHost(req, res, next) {
     if (payload.type !== 'host') return res.status(403).json({ error: 'Kein Host-Token' });
     const host = db.prepare('SELECT * FROM hosts WHERE id = ? AND active = 1').get(payload.hostId);
     if (!host) return res.status(401).json({ error: 'Gastgeber nicht gefunden' });
-    req.host = host;
+    req.portalHost = host;
     next();
   } catch (e) {
     return res.status(401).json({ error: 'Ungültiger Token' });
@@ -236,7 +236,7 @@ router.post('/login', (req, res) => {
 
 // GET /me
 router.get('/me', authenticateHost, (req, res) => {
-  const { password_hash, ...hostWithoutHash } = req.host;
+  const { password_hash, ...hostWithoutHash } = req.portalHost;
   res.json({ host: hostWithoutHash });
 });
 
@@ -248,21 +248,21 @@ router.get('/visitors', authenticateHost, (req, res) => {
     LEFT JOIN locations l ON p.location_id = l.id
     WHERE p.host_id = ? AND p.status = 'pending'
     ORDER BY p.expected_date ASC, p.expected_time ASC
-  `).all(req.host.id);
+  `).all(req.portalHost.id);
 
   const active = db.prepare(`
     SELECT v.*, vi.first_name, vi.last_name, vi.company, vi.abat_id
     FROM visits v JOIN visitors vi ON v.visitor_id = vi.id
     WHERE v.host_id = ? AND v.status = 'active'
     ORDER BY v.checked_in_at DESC
-  `).all(req.host.id);
+  `).all(req.portalHost.id);
 
   const completed = db.prepare(`
     SELECT v.*, vi.first_name, vi.last_name, vi.company, vi.abat_id
     FROM visits v JOIN visitors vi ON v.visitor_id = vi.id
     WHERE v.host_id = ? AND v.status = 'completed'
     ORDER BY v.checked_out_at DESC LIMIT 100
-  `).all(req.host.id);
+  `).all(req.portalHost.id);
 
   res.json({ upcoming, active, completed });
 });
@@ -274,7 +274,7 @@ router.get('/preregistrations', authenticateHost, (req, res) => {
     LEFT JOIN locations l ON p.location_id = l.id
     WHERE p.host_id = ? AND p.status = 'pending' AND p.expected_date >= date('now')
     ORDER BY p.expected_date ASC, p.expected_time ASC
-  `).all(req.host.id);
+  `).all(req.portalHost.id);
   res.json(rows);
 });
 
@@ -288,8 +288,8 @@ router.post('/preregistrations', authenticateHost, async (req, res) => {
   }
 
   const qrCode = `PRE-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-  const host_id = req.host.id;
-  const location_id = req.host.location_id || null;
+  const host_id = req.portalHost.id;
+  const location_id = req.portalHost.location_id || null;
 
   let abatId = null;
   const result = db.prepare(`
@@ -325,7 +325,7 @@ router.post('/preregistrations', authenticateHost, async (req, res) => {
       const dateStr = new Date(expected_date).toLocaleDateString('de-DE');
       sendPreRegistrationQR(
         visitor_email, `${visitor_first_name} ${visitor_last_name}`,
-        qrBuffer, dateStr, req.host.name,
+        qrBuffer, dateStr, req.portalHost.name,
         abatId, location
       ).catch(console.error);
     } catch (e) {
@@ -333,7 +333,7 @@ router.post('/preregistrations', authenticateHost, async (req, res) => {
     }
   }
 
-  try { log('VORREGISTRIERUNG', req.host.name, `${visitor_first_name} ${visitor_last_name}`); } catch {}
+  try { log('VORREGISTRIERUNG', req.portalHost.name, `${visitor_first_name} ${visitor_last_name}`); } catch {}
 
   res.status(201).json(prereg);
 });
@@ -346,12 +346,12 @@ router.put('/change-password', authenticateHost, async (req, res) => {
   if (new_password.length < 8)
     return res.status(400).json({ error: 'Neues Passwort muss mindestens 8 Zeichen haben' });
 
-  const host = db.prepare('SELECT * FROM hosts WHERE id = ?').get(req.host.id);
+  const host = db.prepare('SELECT * FROM hosts WHERE id = ?').get(req.portalHost.id);
   if (!host.password_hash || !bcrypt.compareSync(current_password, host.password_hash))
     return res.status(401).json({ error: 'Aktuelles Passwort ist falsch' });
 
   const hash = bcrypt.hashSync(new_password, 12);
-  db.prepare('UPDATE hosts SET password_hash = ? WHERE id = ?').run(hash, req.host.id);
+  db.prepare('UPDATE hosts SET password_hash = ? WHERE id = ?').run(hash, req.portalHost.id);
   res.json({ ok: true });
 });
 

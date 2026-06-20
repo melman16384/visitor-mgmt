@@ -1,6 +1,6 @@
 # Docker-Installationsanleitung — Besucherverwaltungssystem
 
-> **Hinweis:** Docker-Deployment wird nicht mehr aktiv genutzt. Das Produktivsystem läuft als manuelle Installation mit systemd + Nginx. Siehe [installation.md](installation.md).
+> **Hinweis:** Docker-Deployment wird nicht mehr aktiv genutzt. Das Produktivsystem läuft als manuelle Installation mit pm2 + Nginx. Siehe [installation.md](installation.md).
 
 ---
 

@@ -1,3 +1,6 @@
+@import 'tailwindcss';
+@config '../tailwind.config.js';
+
 @font-face {
   font-family: 'Mulish';
   src: url('/fonts/Mulish-VariableFont_wght.ttf') format('truetype');
@@ -13,10 +16,6 @@
   font-style: italic;
   font-display: swap;
 }
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
 @layer base {
   body {
