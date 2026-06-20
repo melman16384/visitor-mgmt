@@ -130,20 +130,25 @@ Brother QL-820NWB (Etikettendrucker)
 ```
 
 **Tech Stack:**
-- **Frontend:** React 18 + Vite + Tailwind CSS + Mulish Font + react-i18next (i18n)
-- **Backend:** Node.js + Express.js
-- **Datenbank:** SQLite (better-sqlite3, WAL-Modus)
-- **Auth:** JWT (JSON Web Tokens) — Admin-Token: 8h, Host-Token: 12h
-- **Sicherheit:** helmet (HTTP-Header), express-rate-limit (Brute-Force-Schutz)
+- **Frontend:** React 19 + Vite 8 + Tailwind CSS 4 + Mulish Font + react-i18next (i18n)
+- **Backend:** Node.js (≥ 20, getestet auf 24) + Express.js 5
+- **Datenbank:** SQLite (better-sqlite3 12, WAL-Modus)
+- **Auth:** JWT (JSON Web Tokens) — Admin-Token: 8h, Host-Token: 12h; optionales TOTP-2FA pro Benutzer
+- **Sicherheit:** helmet (HTTP-Header), express-rate-limit (Brute-Force-Schutz), bcryptjs (cost 12)
 - **PDF:** PDFKit (Badge-Generierung A6 Landscape)
 - **Etikettendruck:** canvas + net.Socket (Brother QL Raster Protocol)
 - **QR-Codes:** qrcode (Generierung) + html5-qrcode (Kamera-Scanner)
 - **Unterschrift:** signature_pad (Canvas-basiert)
-- **Datei-Upload:** multer (Fotos + Dokumente)
+- **Datei-Upload:** multer 2 (Fotos + Dokumente)
 - **E-Mail:** Nodemailer (SMTP, STARTTLS/SSL/Keine konfigurierbar)
 - **Webserver:** Nginx 1.24
 - **SSL:** Cloudflare Origin Certificate (gültig bis 2041)
-- **Prozessmanager:** systemd
+- **Prozessmanager:** pm2 (Prozessname `visitor-mgmt`)
+
+> **Hinweis Major-Upgrade (Juni 2026):** React 18→19, Express 4→5, Tailwind 3→4, Vite 5→8,
+> better-sqlite3 9→12, multer 1→2. Der Sprung auf better-sqlite3 12 war nötig, da ältere
+> Versionen unter Node.js 24 nicht mehr kompilieren (C++20-Anforderung). Bei Express 5 wurde in
+> `host-portal.js` `req.host` → `req.portalHost` umbenannt (Kollision mit eingebautem Getter).
 
 ---
 
@@ -999,28 +1004,29 @@ Superadmins können Besucher und Vorregistrierungen dauerhaft aus der Datenbank 
 
 ## 20. Infrastruktur & Deployment
 
-### Systemd-Service
+### Prozessverwaltung (pm2)
 
-**Service-Datei:** `/etc/systemd/system/visitor-mgmt.service`
+Das Backend läuft im Produktivsystem unter **pm2** als Prozess `visitor-mgmt`.
 
-```ini
-[Unit]
-Description=Visitor Management System Backend
-After=network.target
+```bash
+# Erststart (aus dem backend-Verzeichnis, damit relative Pfade korrekt sind)
+cd /opt/visitor-mgmt/backend
+pm2 start src/index.js --name visitor-mgmt --cwd /opt/visitor-mgmt/backend
+pm2 save                       # Prozessliste persistieren (überlebt Reboot)
 
-[Service]
-Type=simple
-User=root
-WorkingDirectory=/opt/visitor-mgmt/backend
-ExecStart=/usr/bin/node src/index.js
-Restart=on-failure
-RestartSec=5
-Environment=NODE_ENV=production
-EnvironmentFile=/opt/visitor-mgmt/backend/.env
-
-[Install]
-WantedBy=multi-user.target
+# Alltag
+pm2 restart visitor-mgmt       # nach Code- oder .env-Änderung
+pm2 logs visitor-mgmt          # Live-Logs
+pm2 list                       # Status aller Prozesse
 ```
+
+> **Wichtig:** Nach jedem `git pull` und jeder `.env`-Änderung muss `pm2 restart visitor-mgmt`
+> ausgeführt werden — sonst läuft weiter der alte Code bzw. die alte DB-Verbindung. Läuft der
+> Prozess nicht, antwortet Nginx auf `/api`-Calls nicht und das Frontend zeigt generisch
+> „Anmeldung fehlgeschlagen" (kein Hinweis auf falsche Zugangsdaten — das Backend ist schlicht down).
+
+> **Hinweis:** Frühere Versionen dieser Doku beschrieben einen systemd-Service. Das Produktivsystem
+> nutzt stattdessen pm2 (gemeinsam mit weiteren Projekten auf demselben Server).
 
 ### Nginx
 
@@ -1060,7 +1066,7 @@ ADMIN_PASSWORD=<sicheres-passwort>
 ADMIN_NAME=Administrator
 
 PORT=3001
-DB_PATH=./data/visitors.db
+DB_PATH=/opt/visitor-mgmt/backend/data/visitors.db   # absoluten Pfad verwenden!
 
 # E-Mail (optional — ohne SMTP werden Mails nur geloggt)
 SMTP_HOST=<smtp-server>
@@ -1079,7 +1085,7 @@ COMPANY_NAME=<firmenname>
 | `ADMIN_EMAIL` | Ja (Erststart) | E-Mail des initialen Admins |
 | `ADMIN_PASSWORD` | Ja (Erststart) | Passwort des initialen Admins |
 | `PORT` | Nein | Backend-Port (Standard: 3001) |
-| `DB_PATH` | Nein | SQLite-Pfad (Standard: `./data/visitors.db`) |
+| `DB_PATH` | Empfohlen | SQLite-Pfad. **Absoluten Pfad setzen** (`/opt/visitor-mgmt/backend/data/visitors.db`). Bei relativem Pfad (`./data/visitors.db`) hängt die genutzte DB vom Startverzeichnis ab — je nach pm2-/Cron-/Shell-cwd werden sonst versehentlich unterschiedliche DB-Dateien angelegt. |
 | `SMTP_HOST` | Nein | SMTP-Server |
 | `SMTP_USER` | Nein | SMTP-Benutzername |
 | `SMTP_PASS` | Nein | SMTP-Passwort |
@@ -1094,11 +1100,11 @@ COMPANY_NAME=<firmenname>
 ### Service-Verwaltung
 
 ```bash
-systemctl status visitor-mgmt
-systemctl restart visitor-mgmt      # nach .env-Änderungen
+pm2 list                            # Status aller Prozesse
+pm2 restart visitor-mgmt            # nach git pull / .env-Änderungen
 systemctl reload nginx
-journalctl -u visitor-mgmt -f       # Live-Logs
-journalctl -u visitor-mgmt -n 100
+pm2 logs visitor-mgmt               # Live-Logs
+pm2 logs visitor-mgmt --lines 100
 ```
 
 ### Frontend neu bauen
@@ -1128,7 +1134,7 @@ cat /opt/visitor-mgmt/logs/audit-$(date +%Y-%m-%d).log
 ```bash
 node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 # Wert in /opt/visitor-mgmt/backend/.env eintragen
-systemctl restart visitor-mgmt
+pm2 restart visitor-mgmt
 # Achtung: Alle aktiven Sessions werden invalidiert
 ```
 
@@ -1151,11 +1157,13 @@ curl -X POST http://localhost:3001/api/auth/login \
 ### Backend startet nicht
 
 ```bash
-journalctl -u visitor-mgmt -n 50
-cd /opt/visitor-mgmt/backend && node src/index.js  # detaillierter Fehler
+pm2 logs visitor-mgmt --lines 50
+cd /opt/visitor-mgmt/backend && node src/index.js  # detaillierter Fehler im Vordergrund
 ```
 
-Häufige Ursachen: `.env` fehlt, Port 3001 belegt (`ss -tlnp | grep 3001`), fehlende Pakete (`npm install`).
+Häufige Ursachen: `.env` fehlt, Port 3001 belegt (`ss -tlnp | grep 3001`), fehlende Pakete (`npm install`),
+Prozess gar nicht in pm2 registriert (`pm2 list` — fehlt `visitor-mgmt`, dann mit dem Startbefehl aus §20 anlegen),
+oder better-sqlite3 kompiliert nicht unter neuer Node-Version (`npm install better-sqlite3@latest`).
 
 ### Weißer Bildschirm / Seite lädt nicht
 
@@ -1179,7 +1187,7 @@ Anschließend Hard-Reload im Browser: `Ctrl+Shift+R`.
 2. `.env` prüfen: `SMTP_USER`, `SMTP_PASS`, `SMTP_HOST`
 3. Verschlüsselung prüfen (STARTTLS ↔ SSL je nach Provider)
 4. Bei Gmail: App-Passwort verwenden (kein normales Passwort)
-5. Nach `.env`-Änderung: `systemctl restart visitor-mgmt`
+5. Nach `.env`-Änderung: `pm2 restart visitor-mgmt`
 
 ### Login schlägt fehl
 
@@ -1201,7 +1209,7 @@ Cloudflare SSL-Modus muss **Full (Strict)** sein.
 ### Auto-Checkout funktioniert nicht
 
 ```bash
-journalctl -u visitor-mgmt | grep auto-checkout
+pm2 logs visitor-mgmt --lines 1000 --nostream | grep auto-checkout
 ```
 
 Prüfen ob `auto_checkout_enabled = true` in den Einstellungen und ob die Uhrzeit korrekt als `HH:MM` eingetragen ist.
@@ -1273,6 +1281,6 @@ Eingehend benötigt der Server nur HTTPS (443) von Cloudflare und ggf. SSH (22) 
 | Frontend-Build | `/opt/visitor-mgmt/frontend/dist/` |
 | Nginx-Konfiguration | `/etc/nginx/sites-available/visitor.luwilab.work` |
 | SSL-Zertifikat | `/etc/ssl/visitor-mgmt/cert.pem` |
-| Systemd-Service | `/etc/systemd/system/visitor-mgmt.service` |
+| Prozessmanager | pm2 — Prozess `visitor-mgmt` (`pm2 list`, Dump in `/root/.pm2/dump.pm2`) |
 | Dokumentation | `/opt/visitor-mgmt/docs/` |
 | Assets (Logos, Font) | `/opt/visitor-mgmt/assets/` |

@@ -6,18 +6,18 @@ Vollständiges, webbasiertes Besucherverwaltungssystem für Unternehmen mit Reac
 
 | Dokument | Beschreibung |
 |---|---|
-| [Manuelle Installation](docs/installation.md) | Setup direkt auf Ubuntu/Debian mit Nginx & systemd |
+| [Manuelle Installation](docs/installation.md) | Setup direkt auf Ubuntu/Debian mit Nginx & pm2 |
 | [Projektdokumentation](docs/dokumentation.md) | Vollständige technische Dokumentation: Architektur, API, DB-Schema, Features |
 
 ## Tech Stack
 
 | Bereich | Technologien |
 |---|---|
-| **Frontend** | React 18, Vite, Tailwind CSS, Mulish Font |
-| **Backend** | Node.js, Express.js, better-sqlite3, JWT |
+| **Frontend** | React 19, Vite 8, Tailwind CSS 4, Mulish Font |
+| **Backend** | Node.js (≥ 20), Express.js 5, better-sqlite3 12, JWT (+ optionales TOTP-2FA) |
 | **Sicherheit** | helmet, express-rate-limit, bcryptjs (cost 12) |
 | **Services** | PDFKit (Badge), Nodemailer (E-Mail), html5-qrcode (Scanner) |
-| **Infra** | Nginx, systemd, Cloudflare, SQLite (WAL-Modus) |
+| **Infra** | Nginx, pm2, Cloudflare, SQLite (WAL-Modus) |
 
 ## Features
 
@@ -46,7 +46,7 @@ npm start              # http://localhost:3001
 # Frontend (separates Terminal)
 cd frontend
 npm install
-npm run dev            # http://localhost:5173
+npm run dev            # http://localhost:3000  (Proxy /api → :3001)
 ```
 
 Vollständige Installationsanleitung: [docs/installation.md](docs/installation.md)

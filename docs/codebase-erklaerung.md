@@ -785,7 +785,7 @@ async function generateBadge({ visitorName, company, hostName, date, time, badge
 
 ## 13. Frontend-Architektur
 
-Das Frontend ist eine React 18 Single Page Application, gebaut mit Vite + Tailwind CSS.
+Das Frontend ist eine React 19 Single Page Application, gebaut mit Vite 8 + Tailwind CSS 4.
 
 ### Routing (App.jsx)
 

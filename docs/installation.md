@@ -12,7 +12,7 @@
 4. [Frontend bauen](#4-frontend-bauen)
 5. [Nginx einrichten](#5-nginx-einrichten)
 6. [SSL-Zertifikat einrichten](#6-ssl-zertifikat-einrichten)
-7. [Systemd-Service einrichten](#7-systemd-service-einrichten)
+7. [Backend mit pm2 starten](#7-backend-mit-pm2-starten)
 8. [Erster Start & Test](#8-erster-start--test)
 9. [Cloudflare konfigurieren](#9-cloudflare-konfigurieren)
 
@@ -72,7 +72,7 @@ nano .env
 ```env
 PORT=3001
 JWT_SECRET=<langer-zufälliger-string>   # z.B. openssl rand -hex 32
-DB_PATH=./data/visitors.db
+DB_PATH=/opt/visitor-mgmt/backend/data/visitors.db   # absoluten Pfad verwenden (siehe Hinweis)
 
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
@@ -83,6 +83,12 @@ COMPANY_NAME=Firmenname
 ```
 
 > **JWT_SECRET** niemals leer lassen und nicht in Git einchecken.
+>
+> **DB_PATH absolut setzen:** Bei einem relativen Pfad (`./data/visitors.db`) hängt die genutzte
+> Datenbank vom Startverzeichnis des Prozesses ab. Wird das Backend versehentlich aus einem anderen
+> Verzeichnis gestartet (z.B. durch pm2-cwd, ein Cron-Backup oder einen manuellen `node`-Aufruf aus
+> dem Repo-Root), legt SQLite eine **zweite, leere** `visitors.db` an — die App wirkt dann „leer" oder
+> Logins schlagen fehl. Ein absoluter Pfad verhindert das zuverlässig.
 
 Datenbankverzeichnis anlegen:
 
@@ -205,41 +211,31 @@ certbot --nginx -d deine-domain.de
 
 ---
 
-## 7. Systemd-Service einrichten
+## 7. Backend mit pm2 starten
+
+Das Produktivsystem verwaltet das Backend mit **pm2** (Prozessname `visitor-mgmt`).
 
 ```bash
-nano /etc/systemd/system/visitor-mgmt.service
+# pm2 global installieren (falls noch nicht vorhanden)
+npm install -g pm2
+
+cd /opt/visitor-mgmt/backend
+pm2 start src/index.js --name visitor-mgmt --cwd /opt/visitor-mgmt/backend
+pm2 save                  # Prozessliste persistieren
+pm2 startup               # einmalig: pm2 nach Reboot automatisch starten (Anweisung ausführen)
 ```
 
-Inhalt:
-
-```ini
-[Unit]
-Description=Visitor Management System Backend
-After=network.target
-
-[Service]
-Type=simple
-User=root
-WorkingDirectory=/opt/visitor-mgmt/backend
-ExecStart=/usr/bin/node src/index.js
-Restart=on-failure
-RestartSec=5
-Environment=NODE_ENV=production
-EnvironmentFile=/opt/visitor-mgmt/backend/.env
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Service aktivieren:
+Alltagsbefehle:
 
 ```bash
-systemctl daemon-reload
-systemctl enable visitor-mgmt
-systemctl start visitor-mgmt
-systemctl status visitor-mgmt
+pm2 restart visitor-mgmt  # nach jedem git pull oder jeder .env-Änderung
+pm2 logs visitor-mgmt     # Live-Logs
+pm2 list                  # Status aller Prozesse
 ```
+
+> **Wichtig:** Nach `git pull` und `.env`-Änderungen immer `pm2 restart visitor-mgmt`. Läuft der
+> Prozess nicht, antwortet Nginx auf `/api` nicht und das Frontend meldet generisch
+> „Anmeldung fehlgeschlagen" — das ist dann **kein** Passwortproblem, sondern ein nicht laufendes Backend.
 
 ---
 
@@ -247,10 +243,10 @@ systemctl status visitor-mgmt
 
 ```bash
 # Backend-Status prüfen
-systemctl status visitor-mgmt
+pm2 list
 
 # Live-Logs ansehen
-journalctl -u visitor-mgmt -f
+pm2 logs visitor-mgmt
 
 # API direkt testen
 curl http://localhost:3001/api/health
@@ -293,8 +289,11 @@ NEUES_PW="DeinNeuesPasswort123!"
 EMAIL="superadmin@abat.de"
 
 HASH=$(node -e "const b=require('./node_modules/bcryptjs'); b.hash('$NEUES_PW',12).then(h=>process.stdout.write(h))")
-sqlite3 data/visitors.db "UPDATE users SET password_hash='$HASH' WHERE email='$EMAIL';"
+sqlite3 /opt/visitor-mgmt/backend/data/visitors.db "UPDATE users SET password_hash='$HASH' WHERE email='$EMAIL';"
 ```
+
+> Den **absoluten** DB-Pfad verwenden (muss mit `DB_PATH` aus der `.env` übereinstimmen), sonst wird
+> evtl. eine andere/leere DB bearbeitet als die, die das laufende Backend nutzt.
 
 ### Passwort aller Accounts auf einmal zurücksetzen
 
@@ -303,7 +302,7 @@ cd /opt/visitor-mgmt/backend
 
 NEUES_PW="DeinNeuesPasswort123!"
 HASH=$(node -e "const b=require('./node_modules/bcryptjs'); b.hash('$NEUES_PW',12).then(h=>process.stdout.write(h))")
-sqlite3 data/visitors.db "UPDATE users SET password_hash='$HASH';"
+sqlite3 /opt/visitor-mgmt/backend/data/visitors.db "UPDATE users SET password_hash='$HASH';"
 ```
 
 Danach mit der jeweiligen E-Mail-Adresse und dem neuen Passwort einloggen. Passwort anschließend unter **Einstellungen → Passwort ändern** personalisieren.
@@ -332,8 +331,10 @@ cd /opt/visitor-mgmt/frontend
 npm run build
 
 # Backend neu starten
-systemctl restart visitor-mgmt
+pm2 restart visitor-mgmt
 ```
+
+> Nach jedem Update unbedingt `pm2 restart visitor-mgmt` — ohne Neustart läuft weiter der alte Code.
 
 ---
 
