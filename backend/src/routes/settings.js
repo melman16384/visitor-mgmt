@@ -3,6 +3,8 @@ const nodemailer = require('nodemailer');
 const db = require('../db/database');
 const { authenticate, requireRole } = require('../middleware/auth');
 
+const { getSmtpConfig } = require('../services/email');
+
 const router = express.Router();
 const adminOnly = [authenticate, requireRole(['superadmin', 'admin'])];
 const superadminOnly = [authenticate, requireRole(['superadmin'])];
@@ -48,19 +50,44 @@ router.get('/privacy-policy', (req, res) => {
   });
 });
 
-// GET /smtp-config — current SMTP config from .env (password masked)
+// GET /smtp-config — current SMTP config (DB → .env fallback), password masked
 router.get('/smtp-config', ...adminOnly, (req, res) => {
-  const hasPass = !!(process.env.SMTP_PASS && process.env.SMTP_PASS !== 'your-app-password');
-  const secRow  = db.prepare("SELECT value FROM system_settings WHERE key = 'smtp_security'").get();
-  const PORT_MAP = { starttls: '587', ssl: '465', none: '25' };
-  const security = secRow?.value || process.env.SMTP_SECURITY || 'starttls';
+  const cfg = getSmtpConfig();
   res.json({
-    smtp_host:    process.env.SMTP_HOST    || '',
-    smtp_port:    PORT_MAP[security]       || process.env.SMTP_PORT || '587',
-    smtp_user:    process.env.SMTP_USER    || '',
-    smtp_pass:    hasPass ? '••••••••' : '',
-    from_email:   process.env.FROM_EMAIL   || '',
-    company_name: process.env.COMPANY_NAME || '',
+    smtp_host:  cfg.host,
+    smtp_port:  String(cfg.port),
+    smtp_user:  cfg.user,
+    smtp_pass:  cfg.pass ? '••••••••' : '',
+    from_email: cfg.fromEmail,
+    from_name:  cfg.fromName,
+    company_name: cfg.company,
+    smtp_security: cfg.security,
+  });
+});
+
+// PUT /smtp-config — save SMTP config to DB (superadmin only)
+router.put('/smtp-config', ...superadminOnly, (req, res) => {
+  const upsert = db.prepare('INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)');
+  const tx = db.transaction((body) => {
+    const fields = ['smtp_host', 'smtp_port', 'smtp_user', 'from_email', 'from_name', 'smtp_security', 'company_name'];
+    for (const key of fields) {
+      if (key in body && body[key] !== undefined) upsert.run(key, String(body[key]));
+    }
+    if (body.smtp_pass && body.smtp_pass !== '••••••••') {
+      upsert.run('smtp_pass', body.smtp_pass);
+    }
+  });
+  tx(req.body);
+  const cfg = getSmtpConfig();
+  res.json({
+    smtp_host:  cfg.host,
+    smtp_port:  String(cfg.port),
+    smtp_user:  cfg.user,
+    smtp_pass:  cfg.pass ? '••••••••' : '',
+    from_email: cfg.fromEmail,
+    from_name:  cfg.fromName,
+    company_name: cfg.company,
+    smtp_security: cfg.security,
   });
 });
 
@@ -69,38 +96,32 @@ router.post('/email-test', ...adminOnly, async (req, res) => {
   const { to } = req.body;
   if (!to) return res.status(400).json({ error: 'Empfänger-E-Mail erforderlich' });
 
-  const host     = process.env.SMTP_HOST || 'smtp.gmail.com';
-  const port     = parseInt(process.env.SMTP_PORT || '587');
-  const user     = process.env.SMTP_USER;
-  const pass     = process.env.SMTP_PASS;
-  const from     = process.env.FROM_EMAIL || 'noreply@abat.de';
-  const company  = process.env.COMPANY_NAME || 'abat AG';
-
-  if (!user || user === 'your@email.com') {
-    return res.status(400).json({ error: 'SMTP nicht konfiguriert — bitte .env-Datei prüfen' });
+  const cfg = getSmtpConfig();
+  if (!cfg.user || cfg.user === 'your@email.com') {
+    return res.status(400).json({ error: 'SMTP nicht konfiguriert' });
   }
 
-  const secRow   = db.prepare("SELECT value FROM system_settings WHERE key = 'smtp_security'").get();
-  const security = secRow?.value || process.env.SMTP_SECURITY || 'starttls';
-  const secOpts  = getSecurityOptions(security);
-
   const SECURITY_LABELS = { starttls: 'STARTTLS', ssl: 'SSL/TLS', none: 'Keine' };
+  const fromAddr = `"${cfg.fromName || cfg.company + ' Besucherverwaltung'}" <${cfg.fromEmail}>`;
 
   try {
-    const transport = nodemailer.createTransport({ host, port, ...secOpts, auth: { user, pass } });
+    const transport = nodemailer.createTransport({
+      host: cfg.host, port: cfg.port,
+      ...getSecurityOptions(cfg.security),
+      auth: { user: cfg.user, pass: cfg.pass },
+    });
     await transport.verify();
     await transport.sendMail({
-      from: `"${company} Besucherverwaltung" <${from}>`,
-      to,
-      subject: `Test-E-Mail — ${company} Besucherverwaltung`,
+      from: fromAddr, to,
+      subject: `Test-E-Mail — ${cfg.company} Besucherverwaltung`,
       html: `
         <div style="font-family:sans-serif;max-width:480px;margin:0 auto;">
           <h2 style="color:#004B87;">Test-E-Mail</h2>
-          <p>Diese E-Mail bestätigt, dass die SMTP-Konfiguration der <strong>${company} Besucherverwaltung</strong> korrekt funktioniert.</p>
+          <p>Diese E-Mail bestätigt, dass die SMTP-Konfiguration korrekt funktioniert.</p>
           <table style="border-collapse:collapse;margin:16px 0;font-size:14px;">
-            <tr><td style="padding:4px 16px 4px 0;color:#666;">SMTP-Server</td><td style="font-weight:600;">${host}:${port}</td></tr>
-            <tr><td style="padding:4px 16px 4px 0;color:#666;">Verschlüsselung</td><td style="font-weight:600;">${SECURITY_LABELS[security] || security}</td></tr>
-            <tr><td style="padding:4px 16px 4px 0;color:#666;">Absender</td><td style="font-weight:600;">${from}</td></tr>
+            <tr><td style="padding:4px 16px 4px 0;color:#666;">SMTP-Server</td><td style="font-weight:600;">${cfg.host}:${cfg.port}</td></tr>
+            <tr><td style="padding:4px 16px 4px 0;color:#666;">Verschlüsselung</td><td style="font-weight:600;">${SECURITY_LABELS[cfg.security] || cfg.security}</td></tr>
+            <tr><td style="padding:4px 16px 4px 0;color:#666;">Absender</td><td style="font-weight:600;">${fromAddr}</td></tr>
             <tr><td style="padding:4px 16px 4px 0;color:#666;">Gesendet um</td><td style="font-weight:600;">${new Date().toLocaleString('de-DE')}</td></tr>
           </table>
           <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">

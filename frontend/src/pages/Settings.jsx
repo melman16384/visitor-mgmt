@@ -738,33 +738,41 @@ const SECURITY_OPTIONS = [
 
 function EmailTab() {
   const { t } = useTranslation();
-  const [config, setConfig] = useState(null);
-  const [security, setSecurity] = useState('starttls');
-  const [savingSec, setSavingSec] = useState(false);
+  const { user } = useAuth();
+  const isSuperadmin = user?.role === 'superadmin';
+
+  const EMPTY = { smtp_host: '', smtp_port: '', smtp_user: '', smtp_pass: '', from_email: '', from_name: '', smtp_security: 'starttls' };
+  const [form, setForm] = useState(EMPTY);
+  const [saving, setSaving] = useState(false);
   const [testEmail, setTestEmail] = useState('');
   const [testing, setTesting] = useState(false);
 
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
   useEffect(() => {
-    client.get('/settings/system')
-      .then(r => { if (r.data.smtp_security) setSecurity(r.data.smtp_security); })
-      .catch(() => {});
-    client.get('/settings/smtp-config')
-      .then(r => setConfig(r.data))
-      .catch(() => {});
+    client.get('/settings/smtp-config').then(r => {
+      setForm({
+        smtp_host:     r.data.smtp_host     || '',
+        smtp_port:     r.data.smtp_port     || '',
+        smtp_user:     r.data.smtp_user     || '',
+        smtp_pass:     r.data.smtp_pass     || '',
+        from_email:    r.data.from_email    || '',
+        from_name:     r.data.from_name     || '',
+        smtp_security: r.data.smtp_security || 'starttls',
+      });
+    }).catch(() => {});
   }, []);
 
-  const handleSecurityChange = async (val) => {
-    setSecurity(val);
-    setSavingSec(true);
+  const handleSave = async () => {
+    setSaving(true);
     try {
-      await client.put('/settings/system', { smtp_security: val });
+      const r = await client.put('/settings/smtp-config', form);
+      setForm(f => ({ ...f, smtp_pass: r.data.smtp_pass || '' }));
       showToast(t('settings.email.saved'));
-      const r = await client.get('/settings/smtp-config');
-      setConfig(r.data);
     } catch {
       showToast(t('common.error'), 'error');
     } finally {
-      setSavingSec(false);
+      setSaving(false);
     }
   };
 
@@ -781,55 +789,67 @@ function EmailTab() {
     }
   };
 
-  const CONFIG_FIELDS = [
-    { key: 'smtp_host',    label: 'SMTP-Host' },
-    { key: 'smtp_port',    label: 'SMTP-Port' },
-    { key: 'smtp_user',    label: 'SMTP-Benutzer' },
-    { key: 'smtp_pass',    label: 'SMTP-Passwort' },
-    { key: 'from_email',   label: 'Absender-E-Mail' },
-    { key: 'company_name', label: 'Firmenname' },
-  ];
+  const inp = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all';
+  const inpRO = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-600 font-mono';
 
   return (
     <div className="space-y-6 max-w-lg">
-      {/* SMTP config display */}
+
+      {/* SMTP server */}
       <div className="space-y-4">
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700">
-          SMTP-Einstellungen werden in der <code className="font-mono bg-blue-100 px-1 rounded">.env</code>-Datei gespeichert. Nach Änderungen ist ein Server-Neustart erforderlich.
-        </div>
-        {CONFIG_FIELDS.map(({ key, label }) => (
-          <div key={key}>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-            <div className={`w-full border rounded-lg px-3 py-2 text-sm font-mono ${
-              config ? 'bg-gray-50 border-gray-200 text-gray-800' : 'bg-gray-100 border-gray-200 text-gray-400'
-            }`}>
-              {config
-                ? (config[key] || <span className="text-gray-400 italic">nicht konfiguriert</span>)
-                : <span className="animate-pulse">Lädt…</span>}
-            </div>
+        <h3 className="text-sm font-semibold text-gray-700">SMTP-Server</h3>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-gray-500 mb-1">Host</label>
+            {isSuperadmin
+              ? <input className={inp} value={form.smtp_host} onChange={e => set('smtp_host', e.target.value)} placeholder="smtp.gmail.com" />
+              : <div className={inpRO}>{form.smtp_host || <span className="italic text-gray-400">–</span>}</div>}
           </div>
-        ))}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Port</label>
+            {isSuperadmin
+              ? <input className={inp} value={form.smtp_port} onChange={e => set('smtp_port', e.target.value)} placeholder="587" />
+              : <div className={inpRO}>{form.smtp_port || '–'}</div>}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Benutzername</label>
+          {isSuperadmin
+            ? <input className={inp} value={form.smtp_user} onChange={e => set('smtp_user', e.target.value)} placeholder="user@firma.de" autoComplete="off" />
+            : <div className={inpRO}>{form.smtp_user || <span className="italic text-gray-400">–</span>}</div>}
+        </div>
+
+        {isSuperadmin && (
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Passwort</label>
+            <input className={inp} type="password" value={form.smtp_pass}
+              onChange={e => set('smtp_pass', e.target.value)}
+              placeholder="Leer lassen um bestehendes zu behalten" autoComplete="new-password" />
+            <p className="text-xs text-gray-400 mt-1">Leer lassen = bestehendes Passwort bleibt erhalten</p>
+          </div>
+        )}
       </div>
 
       <hr className="border-gray-100" />
 
-      {/* Security selector */}
+      {/* Verschlüsselung */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-700">Verschlüsselung</h3>
-          {savingSec && <span className="text-xs text-gray-400 animate-pulse">Speichert...</span>}
-        </div>
+        <h3 className="text-sm font-semibold text-gray-700">Verschlüsselung</h3>
         <div className="space-y-2">
           {SECURITY_OPTIONS.map(opt => (
             <label key={opt.value}
-              className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
-                security === opt.value
+              className={`flex items-start gap-3 p-3 rounded-xl border-2 transition-all ${
+                isSuperadmin ? 'cursor-pointer' : 'cursor-default'
+              } ${
+                form.smtp_security === opt.value
                   ? 'border-primary-500 bg-primary-50'
-                  : 'border-gray-200 hover:border-gray-300 bg-white'
+                  : 'border-gray-200 bg-white'
               }`}>
               <input type="radio" name="smtp_security" value={opt.value}
-                checked={security === opt.value}
-                onChange={() => handleSecurityChange(opt.value)}
+                checked={form.smtp_security === opt.value}
+                onChange={() => isSuperadmin && set('smtp_security', opt.value)}
+                disabled={!isSuperadmin}
                 className="mt-0.5 text-primary-600" />
               <div>
                 <p className="text-sm font-semibold text-gray-800">{opt.label}
@@ -840,10 +860,37 @@ function EmailTab() {
             </label>
           ))}
         </div>
-        <p className="text-xs text-gray-400">
-          Wird sofort gespeichert und beim nächsten E-Mail-Versand verwendet — kein Neustart nötig.
-        </p>
       </div>
+
+      <hr className="border-gray-100" />
+
+      {/* Absender */}
+      <div className="space-y-4">
+        <h3 className="text-sm font-semibold text-gray-700">Absender</h3>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Absender-E-Mail</label>
+          {isSuperadmin
+            ? <input className={inp} value={form.from_email} onChange={e => set('from_email', e.target.value)} placeholder="noreply@firma.de" />
+            : <div className={inpRO}>{form.from_email || <span className="italic text-gray-400">–</span>}</div>}
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Absendername <span className="text-gray-400">(wird im E-Mail-Client angezeigt)</span></label>
+          {isSuperadmin
+            ? <input className={inp} value={form.from_name} onChange={e => set('from_name', e.target.value)} placeholder="Besucherverwaltung Meine Firma" />
+            : <div className={inpRO}>{form.from_name || <span className="italic text-gray-400">–</span>}</div>}
+          <p className="text-xs text-gray-400 mt-1">Beispiel: <span className="font-mono">Besucherverwaltung Meine Firma &lt;noreply@firma.de&gt;</span></p>
+        </div>
+      </div>
+
+      {isSuperadmin && (
+        <>
+          <hr className="border-gray-100" />
+          <button onClick={handleSave} disabled={saving}
+            className="w-full bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm flex items-center justify-center gap-2">
+            {saving ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Speichert…</> : 'Einstellungen speichern'}
+          </button>
+        </>
+      )}
 
       <hr className="border-gray-100" />
 
@@ -852,23 +899,14 @@ function EmailTab() {
         <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
           <Mail size={15} className="text-gray-400" /> Test-E-Mail senden
         </h3>
-        <p className="text-xs text-gray-400">
-          Prüft die SMTP-Verbindung und sendet eine Test-E-Mail mit den aktuellen Einstellungen.
-        </p>
+        <p className="text-xs text-gray-400">Prüft die SMTP-Verbindung und sendet eine Test-E-Mail.</p>
         <div className="flex gap-2">
-          <input
-            type="email"
-            placeholder="Empfänger-E-Mail"
+          <input type="email" placeholder="Empfänger-E-Mail"
             className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-            value={testEmail}
-            onChange={e => setTestEmail(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleTest()}
-          />
-          <button
-            onClick={handleTest}
-            disabled={testing || !testEmail}
-            className="flex items-center gap-2 bg-gray-700 hover:bg-gray-800 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm whitespace-nowrap"
-          >
+            value={testEmail} onChange={e => setTestEmail(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleTest()} />
+          <button onClick={handleTest} disabled={testing || !testEmail}
+            className="flex items-center gap-2 bg-gray-700 hover:bg-gray-800 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm whitespace-nowrap">
             <Mail size={15} className={testing ? 'animate-pulse' : ''} />
             {testing ? t('common.loading') : t('settings.email.test')}
           </button>

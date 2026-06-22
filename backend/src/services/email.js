@@ -10,17 +10,35 @@ function getSecurityOptions(security) {
   }
 }
 
+function getDbVal(key) {
+  return db.prepare('SELECT value FROM system_settings WHERE key = ?').get(key)?.value || '';
+}
+
+function getSmtpConfig() {
+  return {
+    host:      getDbVal('smtp_host')     || process.env.SMTP_HOST     || '',
+    port:      parseInt(getDbVal('smtp_port') || process.env.SMTP_PORT || '587'),
+    user:      getDbVal('smtp_user')     || process.env.SMTP_USER     || '',
+    pass:      getDbVal('smtp_pass')     || process.env.SMTP_PASS     || '',
+    security:  getDbVal('smtp_security') || process.env.SMTP_SECURITY || 'starttls',
+    fromEmail: getDbVal('from_email')    || process.env.FROM_EMAIL    || '',
+    fromName:  getDbVal('from_name')     || process.env.COMPANY_NAME  || '',
+    company:   getDbVal('company_name')  || process.env.COMPANY_NAME  || 'abat AG',
+  };
+}
+
 function createTransport() {
-  if (!process.env.SMTP_USER || process.env.SMTP_USER === 'your@email.com') return null;
-  const secRow = db.prepare("SELECT value FROM system_settings WHERE key = 'smtp_security'").get();
-  const security = secRow?.value || process.env.SMTP_SECURITY || 'starttls';
+  const cfg = getSmtpConfig();
+  if (!cfg.user || cfg.user === 'your@email.com') return null;
   return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    ...getSecurityOptions(security),
-    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    host: cfg.host,
+    port: cfg.port,
+    ...getSecurityOptions(cfg.security),
+    auth: { user: cfg.user, pass: cfg.pass },
   });
 }
+
+module.exports.getSmtpConfig = getSmtpConfig;
 
 function emailShell(content, company) {
   return `<!DOCTYPE html>
@@ -86,7 +104,8 @@ function detailRow(label, value) {
 
 async function sendPreRegistrationQR(email, name, qrBuffer, date, host, abatId, location) {
   const transport = createTransport();
-  const company = process.env.COMPANY_NAME || 'abat AG';
+  const cfg = getSmtpConfig();
+  const company = cfg.company;
   const subject = `Ihre Besuchseinladung bei ${company} – ${date}`;
 
   // Location row
@@ -160,7 +179,7 @@ async function sendPreRegistrationQR(email, name, qrBuffer, date, host, abatId, 
   }
   try {
     await transport.sendMail({
-      from: `"${company} Besucherverwaltung" <${process.env.FROM_EMAIL || 'noreply@abat.de'}>`,
+      from: `"${cfg.fromName || company + ' Besucherverwaltung'}" <${cfg.fromEmail}>`,
       to: email,
       subject,
       html,
@@ -173,7 +192,8 @@ async function sendPreRegistrationQR(email, name, qrBuffer, date, host, abatId, 
 
 async function sendHostNotification(host, visitor, visit) {
   const transport = createTransport();
-  const company = process.env.COMPANY_NAME || 'abat AG';
+  const cfg = getSmtpConfig();
+  const company = cfg.company;
   const subject = `Besucher eingetroffen: ${visitor.first_name} ${visitor.last_name}`;
   const checkinTime = new Date(visit.checked_in_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
 
@@ -211,7 +231,7 @@ async function sendHostNotification(host, visitor, visit) {
   }
   try {
     await transport.sendMail({
-      from: `"${company} Besucherverwaltung" <${process.env.FROM_EMAIL || 'noreply@abat.de'}>`,
+      from: `"${cfg.fromName || company + ' Besucherverwaltung'}" <${cfg.fromEmail}>`,
       to: host.email,
       subject,
       html,
@@ -224,7 +244,8 @@ async function sendHostNotification(host, visitor, visit) {
 async function sendVisitorConfirmation(visitor, visit, host) {
   if (!visitor.email) return;
   const transport = createTransport();
-  const company = process.env.COMPANY_NAME || 'abat AG';
+  const cfg = getSmtpConfig();
+  const company = cfg.company;
   const checkinTime = new Date(visit.checked_in_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
   const checkinDate = new Date(visit.checked_in_at).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' });
   const subject = `Willkommen bei ${company} – Check-in bestätigt`;
@@ -263,7 +284,7 @@ async function sendVisitorConfirmation(visitor, visit, host) {
   }
   try {
     await transport.sendMail({
-      from: `"${company} Besucherverwaltung" <${process.env.FROM_EMAIL || 'noreply@abat.de'}>`,
+      from: `"${cfg.fromName || company + ' Besucherverwaltung'}" <${cfg.fromEmail}>`,
       to: visitor.email,
       subject,
       html,
@@ -276,7 +297,8 @@ async function sendVisitorConfirmation(visitor, visit, host) {
 async function sendVisitorCheckout(visitor, visit, locationName) {
   if (!visitor.email) return;
   const transport = createTransport();
-  const company = process.env.COMPANY_NAME || 'abat AG';
+  const cfg = getSmtpConfig();
+  const company = cfg.company;
   const location = locationName || company;
   const subject = `Vielen Dank für Ihren Besuch bei ${location}`;
 
@@ -328,7 +350,7 @@ async function sendVisitorCheckout(visitor, visit, locationName) {
   }
   try {
     await transport.sendMail({
-      from: `"${company} Besucherverwaltung" <${process.env.FROM_EMAIL || 'noreply@abat.de'}>`,
+      from: `"${cfg.fromName || company + ' Besucherverwaltung'}" <${cfg.fromEmail}>`,
       to: visitor.email,
       subject,
       html,
