@@ -29,7 +29,7 @@ function LangSwitcher({ collapsed }) {
     <div className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className={`w-full flex items-center gap-2 px-3 py-2.5 text-abat-metallic hover:text-white hover:bg-abat-blau/20 transition-colors rounded-lg ${collapsed ? 'justify-center' : ''}`}
+        className={`w-full flex items-center gap-2 px-3 py-2.5 text-abat-grau hover:text-white hover:bg-abat-blau/20 transition-colors rounded-lg ${collapsed ? 'justify-center' : ''}`}
         title={collapsed ? current.label : undefined}
       >
         <Globe size={16} className="flex-shrink-0" />
@@ -120,7 +120,7 @@ export default function Sidebar() {
         {/* Admin items */}
         {user && (user.role === 'superadmin' || user.role === 'admin') && (
           <div className="mt-4 pt-4 border-t border-white/10 px-2 space-y-1">
-            {!collapsed && <p className="px-3 text-xs text-abat-metallic uppercase tracking-wider mb-2">{t('nav.administration')}</p>}
+            {!collapsed && <p className="px-3 text-xs text-abat-grau uppercase tracking-wider mb-2">{t('nav.administration')}</p>}
             {adminItems.filter(item => !item.roles || item.roles.includes(user.role)).map(({ to, label, icon: Icon }) => (
               <NavLink
                 key={to}
@@ -147,7 +147,7 @@ export default function Sidebar() {
         <LangSwitcher collapsed={collapsed} />
         <button
           onClick={() => setCollapsed(c => !c)}
-          className={`w-full flex items-center gap-2 px-3 py-2.5 text-abat-metallic hover:text-white hover:bg-abat-blau/20 transition-colors rounded-lg ${collapsed ? 'justify-center' : ''}`}
+          className={`w-full flex items-center gap-2 px-3 py-2.5 text-abat-grau hover:text-white hover:bg-abat-blau/20 transition-colors rounded-lg ${collapsed ? 'justify-center' : ''}`}
         >
           {collapsed ? <ChevronRight size={18} /> : (
             <>

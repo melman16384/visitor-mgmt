@@ -87,7 +87,7 @@ export default function KioskStart() {
 
       {/* Footer */}
       <div className="kiosk-fade-up kiosk-delay-5 py-6 text-center">
-        <p className="text-abat-metallic text-xs">{t('questions')}</p>
+        <p className="text-abat-grau text-xs">{t('questions')}</p>
       </div>
 
     </div>

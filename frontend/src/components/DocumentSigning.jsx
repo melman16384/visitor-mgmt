@@ -81,7 +81,7 @@ export default function DocumentSigning({ visitId, onComplete }) {
           label="Unterschrift (Pflicht)"
           onSave={handleSignatureSave}
         />
-        {saving && <p className="text-sm text-abat-metallic text-center">Wird gespeichert...</p>}
+        {saving && <p className="text-sm text-abat-grau text-center">Wird gespeichert...</p>}
         {error && <p className="text-sm text-red-500">{error}</p>}
       </div>
     );
@@ -95,10 +95,10 @@ export default function DocumentSigning({ visitId, onComplete }) {
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
       >
-        <Upload size={32} className="mx-auto mb-3 text-abat-metallic" />
+        <Upload size={32} className="mx-auto mb-3 text-abat-grau" />
         <p className="font-semibold text-abat-dunkelgrau">Dokument hochladen</p>
-        <p className="text-sm text-abat-metallic mt-1">PDF, DOC oder DOCX — max. 20 MB</p>
-        <p className="text-xs text-abat-metallic mt-2">Klicken oder Datei hierher ziehen</p>
+        <p className="text-sm text-abat-grau mt-1">PDF, DOC oder DOCX — max. 20 MB</p>
+        <p className="text-xs text-abat-grau mt-2">Klicken oder Datei hierher ziehen</p>
         <input
           ref={fileInputRef}
           type="file"
@@ -111,7 +111,7 @@ export default function DocumentSigning({ visitId, onComplete }) {
         <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl">
           <FileText size={18} className="text-abat-blau" />
           <span className="text-sm text-abat-dunkelgrau flex-1 truncate">{file.name}</span>
-          <button onClick={() => setFile(null)} className="text-abat-metallic hover:text-abat-dunkelgrau">
+          <button onClick={() => setFile(null)} className="text-abat-grau hover:text-abat-dunkelgrau">
             <X size={16} />
           </button>
         </div>

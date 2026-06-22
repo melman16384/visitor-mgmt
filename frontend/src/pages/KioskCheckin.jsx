@@ -21,14 +21,14 @@ function AbatIdInput({ onSubmit, loading, error }) {
   };
   return (
     <div className="w-full flex flex-col items-center gap-3">
-      <p className="text-abat-metallic text-sm text-center">Geben Sie Ihre abat-ID aus der Einladungs-E-Mail ein</p>
+      <p className="text-abat-grau text-sm text-center">Geben Sie Ihre abat-ID aus der Einladungs-E-Mail ein</p>
       <div className="flex items-center border-2 border-abat-hellgrau focus-within:border-abat-blau rounded-2xl overflow-hidden transition-colors w-full">
         <span className="bg-gray-100 px-4 py-4 text-xl font-mono font-bold text-abat-dunkelgrau select-none border-r border-abat-hellgrau whitespace-nowrap">ABAT-</span>
         <input ref={inputRef} type="text" inputMode="numeric" pattern="[0-9]*" value={digits}
           onChange={handleChange} placeholder="00000000" maxLength={8}
           className="flex-1 px-4 py-4 text-xl font-mono tracking-widest text-abat-dunkelgrau placeholder-abat-hellgrau focus:outline-none bg-white" />
       </div>
-      <p className="text-xs text-abat-metallic">{digits.length}/8 Ziffern{digits.length === 8 && !loading && <span className="text-green-600 ml-2">✓ Wird gesucht…</span>}</p>
+      <p className="text-xs text-abat-grau">{digits.length}/8 Ziffern{digits.length === 8 && !loading && <span className="text-green-600 ml-2">✓ Wird gesucht…</span>}</p>
       {error && <p className="text-red-500 text-sm text-center">{error}</p>}
     </div>
   );
@@ -153,27 +153,27 @@ export default function KioskCheckin() {
         </div>
         <h2 className="kiosk-fade-up kiosk-delay-1 text-3xl font-bold text-abat-dunkelgrau mb-2">{t('welcomeMsg')}</h2>
         <p className="kiosk-fade-up kiosk-delay-2 text-xl text-abat-dunkelgrau mb-1">{result?.visitor?.first_name} {result?.visitor?.last_name}</p>
-        {result?.visitor?.company && <p className="kiosk-fade-up kiosk-delay-2 text-abat-metallic mb-4">{result.visitor.company}</p>}
+        {result?.visitor?.company && <p className="kiosk-fade-up kiosk-delay-2 text-abat-grau mb-4">{result.visitor.company}</p>}
         <div className="kiosk-fade-up kiosk-delay-3 bg-gray-50 rounded-2xl p-4 mb-6 text-left space-y-3">
           {result?.visitor?.abat_id && (
             <div>
-              <p className="text-xs text-abat-metallic uppercase tracking-wider">abat-ID</p>
+              <p className="text-xs text-abat-grau uppercase tracking-wider">abat-ID</p>
               <p className="text-2xl font-bold text-abat-blau font-mono">{result.visitor.abat_id}</p>
             </div>
           )}
           <div>
-            <p className="text-sm text-abat-metallic">{t('hostLabel')}</p>
+            <p className="text-sm text-abat-grau">{t('hostLabel')}</p>
             <p className="font-semibold text-abat-dunkelgrau">{result?.visit?.host_name || '–'}</p>
           </div>
           {result?.visit?.badge_number && (
             <div>
-              <p className="text-sm text-abat-metallic">{t('badgeLabel')}</p>
+              <p className="text-sm text-abat-grau">{t('badgeLabel')}</p>
               <p className="font-semibold text-abat-dunkelgrau">{result.visit.badge_number}</p>
             </div>
           )}
         </div>
         <p className="kiosk-fade-up kiosk-delay-4 text-abat-hellblau font-semibold">{t('hostNotified')}</p>
-        <p className="kiosk-fade-up kiosk-delay-5 text-abat-metallic text-sm mt-4">{t('backIn')} {countdown} {t('seconds')}</p>
+        <p className="kiosk-fade-up kiosk-delay-5 text-abat-grau text-sm mt-4">{t('backIn')} {countdown} {t('seconds')}</p>
       </div>
     </div>
   );
@@ -186,12 +186,12 @@ export default function KioskCheckin() {
           <AlertTriangle size={48} className="text-red-400" />
         </div>
         <h2 className="kiosk-fade-up kiosk-delay-1 text-3xl font-bold text-abat-dunkelgrau mb-2">{t('errorTitle')}</h2>
-        <p className="kiosk-fade-up kiosk-delay-2 text-abat-metallic mb-6">{result?.error}</p>
+        <p className="kiosk-fade-up kiosk-delay-2 text-abat-grau mb-6">{result?.error}</p>
         <button onClick={reset}
           className="kiosk-fade-up kiosk-delay-3 bg-abat-blau text-white px-8 py-3 rounded-xl font-semibold hover:bg-primary-600 transition-colors active:scale-95">
           {t('retry')}
         </button>
-        <p className="kiosk-fade-up kiosk-delay-4 text-abat-metallic text-sm mt-4">{t('backIn')} {countdown} {t('seconds')}</p>
+        <p className="kiosk-fade-up kiosk-delay-4 text-abat-grau text-sm mt-4">{t('backIn')} {countdown} {t('seconds')}</p>
       </div>
     </div>
   );
@@ -203,12 +203,12 @@ export default function KioskCheckin() {
       <div className="flex-1 flex flex-col justify-center px-8 py-10 max-w-2xl mx-auto w-full gap-6">
         <div>
           <h2 className="text-2xl font-bold text-abat-dunkelgrau mb-1">Sind das Ihre Daten?</h2>
-          <p className="text-abat-metallic text-sm">Bitte prüfen und ggf. korrigieren Sie Ihre Angaben.</p>
+          <p className="text-abat-grau text-sm">Bitte prüfen und ggf. korrigieren Sie Ihre Angaben.</p>
         </div>
 
         {prereg?.host_name && (
           <div className="bg-blue-50 rounded-xl p-4 text-sm">
-            <span className="text-abat-metallic">Gastgeber: </span>
+            <span className="text-abat-grau">Gastgeber: </span>
             <span className="font-semibold text-abat-dunkelgrau">{prereg.host_name}</span>
           </div>
         )}
@@ -243,7 +243,7 @@ export default function KioskCheckin() {
       <div className="flex-1 flex flex-col px-8 py-8 max-w-2xl mx-auto w-full gap-6">
         <div>
           <h2 className="text-xl font-bold text-abat-dunkelgrau mb-1">Datenschutzerklärung lesen & unterschreiben</h2>
-          <p className="text-abat-metallic text-sm">Bitte lesen Sie die folgende Datenschutzerklärung und bestätigen Sie mit Ihrer Unterschrift.</p>
+          <p className="text-abat-grau text-sm">Bitte lesen Sie die folgende Datenschutzerklärung und bestätigen Sie mit Ihrer Unterschrift.</p>
         </div>
 
         <div className="flex-1 overflow-y-auto bg-gray-50 border border-abat-hellgrau rounded-xl p-5 text-sm text-abat-dunkelgrau leading-relaxed max-h-64 whitespace-pre-wrap">
@@ -276,18 +276,18 @@ export default function KioskCheckin() {
       <div className="flex-1 flex flex-col items-center justify-center px-8 py-12 gap-6 max-w-2xl mx-auto w-full">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-abat-dunkelgrau mb-2">{t('scanTitle')}</h2>
-          <p className="text-abat-metallic">{t('scanHint')}</p>
+          <p className="text-abat-grau">{t('scanHint')}</p>
         </div>
         <QRScanner onScan={handleQRScan} className="w-full" />
         <div className="flex items-center gap-4 w-full">
           <div className="flex-1 h-px bg-abat-hellgrau" />
-          <span className="text-abat-metallic text-sm font-medium">oder abat-ID eingeben</span>
+          <span className="text-abat-grau text-sm font-medium">oder abat-ID eingeben</span>
           <div className="flex-1 h-px bg-abat-hellgrau" />
         </div>
         <AbatIdInput onSubmit={handleAbatLookup} loading={abatLoading} error={abatError} />
         <div className="flex items-center gap-4 w-full">
           <div className="flex-1 h-px bg-abat-hellgrau" />
-          <span className="text-abat-metallic text-sm font-medium">oder</span>
+          <span className="text-abat-grau text-sm font-medium">oder</span>
           <div className="flex-1 h-px bg-abat-hellgrau" />
         </div>
         <button onClick={() => navigate('/kiosk/manual')}

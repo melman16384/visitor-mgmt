@@ -33,7 +33,7 @@ export default function KioskScreensaver({ onDismiss }) {
       <div className="mt-16 w-24 h-0.5 bg-gradient-to-r from-abat-blau via-abat-hellblau to-abat-lichtblau rounded-full" />
 
       {/* Hint */}
-      <p className="text-abat-metallic text-sm mt-6 animate-pulse">Zum Fortfahren tippen</p>
+      <p className="text-abat-grau text-sm mt-6 animate-pulse">Zum Fortfahren tippen</p>
     </div>
   );
 }

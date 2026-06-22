@@ -9,7 +9,7 @@ export default {
         abat: {
           dunkelgrau: '#53565A',
           hellgrau: '#C8C9C7',
-          metallic: '#8D9093',
+          grau: '#6B7A8D',
           blau: '#004B87',
           hellblau: '#00A3E0',
           lichtblau: '#9ADBE8',

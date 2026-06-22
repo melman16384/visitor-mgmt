@@ -111,26 +111,26 @@ export default function KioskManual() {
         </div>
         <h2 className="kiosk-fade-up kiosk-delay-1 text-3xl font-bold text-abat-dunkelgrau mb-2">{t('welcomeMsg')}</h2>
         <p className="kiosk-fade-up kiosk-delay-2 text-xl text-abat-dunkelgrau">{result?.visitor?.first_name} {result?.visitor?.last_name}</p>
-        {result?.visitor?.company && <p className="kiosk-fade-up kiosk-delay-2 text-abat-metallic mb-4">{result.visitor.company}</p>}
+        {result?.visitor?.company && <p className="kiosk-fade-up kiosk-delay-2 text-abat-grau mb-4">{result.visitor.company}</p>}
         <div className="kiosk-fade-up kiosk-delay-3 bg-gray-50 rounded-2xl p-4 mb-4 space-y-3">
           {result?.visitor?.abat_id && (
             <div>
-              <p className="text-xs text-abat-metallic uppercase tracking-wider">abat-ID</p>
+              <p className="text-xs text-abat-grau uppercase tracking-wider">abat-ID</p>
               <p className="text-2xl font-bold text-abat-blau font-mono">{result.visitor.abat_id}</p>
             </div>
           )}
           {result?.visit?.badge_number && (
             <div>
-              <p className="text-sm text-abat-metallic">{t('badgeNumber')}</p>
+              <p className="text-sm text-abat-grau">{t('badgeNumber')}</p>
               <p className="text-lg font-semibold text-abat-dunkelgrau">{result.visit.badge_number}</p>
             </div>
           )}
         </div>
         {result?.visit?.host_name_free
-          ? <p className="kiosk-fade-up kiosk-delay-4 text-abat-metallic text-sm">{t('hostNotifiedManual')}</p>
+          ? <p className="kiosk-fade-up kiosk-delay-4 text-abat-grau text-sm">{t('hostNotifiedManual')}</p>
           : <p className="kiosk-fade-up kiosk-delay-4 text-abat-hellblau font-semibold">{t('hostNotified')}</p>
         }
-        <p className="kiosk-fade-up kiosk-delay-5 text-abat-metallic text-sm mt-4">{t('backIn')} {countdown} {t('seconds')}</p>
+        <p className="kiosk-fade-up kiosk-delay-5 text-abat-grau text-sm mt-4">{t('backIn')} {countdown} {t('seconds')}</p>
       </div>
     </div>
   );
@@ -143,12 +143,12 @@ export default function KioskManual() {
           <AlertTriangle size={48} className="text-red-400" />
         </div>
         <h2 className="kiosk-fade-up kiosk-delay-1 text-3xl font-bold text-abat-dunkelgrau mb-2">{t('errorTitle')}</h2>
-        <p className="kiosk-fade-up kiosk-delay-2 text-abat-metallic mb-6">{result?.error}</p>
+        <p className="kiosk-fade-up kiosk-delay-2 text-abat-grau mb-6">{result?.error}</p>
         <button onClick={() => { setResult(null); setCountdown(6); go('form'); }}
           className="kiosk-fade-up kiosk-delay-3 bg-abat-blau text-white px-8 py-3 rounded-xl font-semibold hover:bg-primary-600 transition-colors active:scale-95">
           {t('retry')}
         </button>
-        <p className="kiosk-fade-up kiosk-delay-4 text-abat-metallic text-sm mt-4">{t('backIn')} {countdown} {t('seconds')}</p>
+        <p className="kiosk-fade-up kiosk-delay-4 text-abat-grau text-sm mt-4">{t('backIn')} {countdown} {t('seconds')}</p>
       </div>
     </div>
   );
@@ -160,7 +160,7 @@ export default function KioskManual() {
       <div className="flex-1 flex flex-col px-8 py-8 max-w-2xl mx-auto w-full gap-6">
         <div>
           <h2 className="text-xl font-bold text-abat-dunkelgrau mb-1">Datenschutzerklärung lesen & unterschreiben</h2>
-          <p className="text-abat-metallic text-sm">Bitte lesen Sie die folgende Datenschutzerklärung und bestätigen Sie mit Ihrer Unterschrift.</p>
+          <p className="text-abat-grau text-sm">Bitte lesen Sie die folgende Datenschutzerklärung und bestätigen Sie mit Ihrer Unterschrift.</p>
         </div>
 
         <div className="flex-1 overflow-y-auto bg-gray-50 border border-abat-hellgrau rounded-xl p-5 text-sm text-abat-dunkelgrau leading-relaxed max-h-64 whitespace-pre-wrap">

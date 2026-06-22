@@ -78,7 +78,7 @@ export default function QRScanner({ onScan, onError, className = '' }) {
           >
             <X size={20} className="text-abat-dunkelgrau" />
           </button>
-          <p className="text-center text-sm text-abat-metallic mt-2">QR-Code vor die Kamera halten</p>
+          <p className="text-center text-sm text-abat-grau mt-2">QR-Code vor die Kamera halten</p>
         </div>
       )}
       {error && <p className="text-red-500 text-sm text-center">{error}</p>}

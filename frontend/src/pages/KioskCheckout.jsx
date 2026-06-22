@@ -21,7 +21,7 @@ function AbatIdInput({ onSubmit, loading, error }) {
 
   return (
     <div className="w-full flex flex-col items-center gap-3">
-      <p className="text-abat-metallic text-sm text-center">Geben Sie Ihre abat-ID ein</p>
+      <p className="text-abat-grau text-sm text-center">Geben Sie Ihre abat-ID ein</p>
       <div className="flex items-center gap-0 border-2 border-abat-hellgrau focus-within:border-abat-blau rounded-2xl overflow-hidden transition-colors w-full">
         <span className="bg-gray-100 px-4 py-4 text-xl font-mono font-bold text-abat-dunkelgrau select-none border-r border-abat-hellgrau whitespace-nowrap">
           ABAT-
@@ -38,7 +38,7 @@ function AbatIdInput({ onSubmit, loading, error }) {
           className="flex-1 px-4 py-4 text-xl font-mono tracking-widest text-abat-dunkelgrau placeholder-abat-hellgrau focus:outline-none bg-white"
         />
       </div>
-      <p className="text-xs text-abat-metallic">
+      <p className="text-xs text-abat-grau">
         {digits.length}/8 Ziffern
         {digits.length === 8 && !loading && <span className="text-green-600 ml-2">✓ Wird gesucht…</span>}
       </p>
@@ -155,12 +155,12 @@ export default function KioskCheckout() {
         </div>
         <h2 className="kiosk-fade-up kiosk-delay-1 text-3xl font-bold text-abat-dunkelgrau mb-2">{t('goodbye')}</h2>
         <p className="kiosk-fade-up kiosk-delay-2 text-xl text-abat-dunkelgrau mb-1">{result?.visitor?.first_name} {result?.visitor?.last_name}</p>
-        {result?.visitor?.company && <p className="kiosk-fade-up kiosk-delay-2 text-abat-metallic mb-2">{result.visitor.company}</p>}
+        {result?.visitor?.company && <p className="kiosk-fade-up kiosk-delay-2 text-abat-grau mb-2">{result.visitor.company}</p>}
         {result?.visitor?.abat_id && (
           <p className="kiosk-fade-up kiosk-delay-3 font-mono text-sm text-abat-blau font-semibold mb-4">{result.visitor.abat_id}</p>
         )}
         <p className="kiosk-fade-up kiosk-delay-3 text-abat-hellblau font-semibold">{t('checkedOut')}</p>
-        <p className="kiosk-fade-up kiosk-delay-4 text-abat-metallic text-sm mt-4">{t('backIn')} {countdown} {t('seconds')}</p>
+        <p className="kiosk-fade-up kiosk-delay-4 text-abat-grau text-sm mt-4">{t('backIn')} {countdown} {t('seconds')}</p>
       </div>
     </div>
   );
@@ -172,12 +172,12 @@ export default function KioskCheckout() {
           <AlertTriangle size={48} className="text-red-400" />
         </div>
         <h2 className="kiosk-fade-up kiosk-delay-1 text-3xl font-bold text-abat-dunkelgrau mb-2">{t('notFound')}</h2>
-        <p className="kiosk-fade-up kiosk-delay-2 text-abat-metallic mb-6">{result?.error}</p>
+        <p className="kiosk-fade-up kiosk-delay-2 text-abat-grau mb-6">{result?.error}</p>
         <button onClick={reset}
           className="kiosk-fade-up kiosk-delay-3 bg-abat-blau text-white px-8 py-3 rounded-xl font-semibold hover:bg-primary-600 transition-colors active:scale-95">
           {t('back')}
         </button>
-        <p className="kiosk-fade-up kiosk-delay-4 text-abat-metallic text-sm mt-4">{t('backIn')} {countdown} {t('seconds')}</p>
+        <p className="kiosk-fade-up kiosk-delay-4 text-abat-grau text-sm mt-4">{t('backIn')} {countdown} {t('seconds')}</p>
       </div>
     </div>
   );
@@ -198,7 +198,7 @@ export default function KioskCheckout() {
               className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                 tab === key
                   ? 'bg-white text-abat-dunkelgrau shadow-sm'
-                  : 'text-abat-metallic hover:text-abat-dunkelgrau'
+                  : 'text-abat-grau hover:text-abat-dunkelgrau'
               }`}>
               {label}
             </button>
@@ -209,7 +209,7 @@ export default function KioskCheckout() {
         <div key={tabKey} className="kiosk-fade-up w-full flex flex-col items-center gap-4">
           {tab === 'scan' && (
             <>
-              <p className="text-abat-metallic text-center text-sm">{t('scanBadge')}</p>
+              <p className="text-abat-grau text-center text-sm">{t('scanBadge')}</p>
               <QRScanner onScan={handleQRScan} className="w-full" />
             </>
           )}
@@ -234,15 +234,15 @@ export default function KioskCheckout() {
               {state === 'results' && (
                 <div className="kiosk-fade-up flex flex-col gap-2">
                   {searchResults.length === 0 ? (
-                    <p className="text-center text-abat-metallic py-6">{t('noVisitorsFound')}</p>
+                    <p className="text-center text-abat-grau py-6">{t('noVisitorsFound')}</p>
                   ) : searchResults.map((visit, i) => (
                     <button key={visit.id} onClick={() => handleCheckoutById(visit.id)}
                       className="kiosk-fade-up flex items-center justify-between bg-gray-50 hover:bg-blue-50 hover:border-abat-blau border-2 border-transparent rounded-xl p-4 transition-all text-left active:scale-[0.99]"
                       style={{ animationDelay: `${i * 0.06}s` }}>
                       <div>
                         <p className="font-semibold text-abat-dunkelgrau">{visit.first_name} {visit.last_name}</p>
-                        <p className="text-sm text-abat-metallic">{visit.company}</p>
-                        <p className="text-xs text-abat-metallic">{t('hostLabel')}: {visit.host_name} · Badge: {visit.badge_number}</p>
+                        <p className="text-sm text-abat-grau">{visit.company}</p>
+                        <p className="text-xs text-abat-grau">{t('hostLabel')}: {visit.host_name} · Badge: {visit.badge_number}</p>
                       </div>
                       <span className="text-abat-blau text-sm font-semibold">{t('checkoutAction')}</span>
                     </button>

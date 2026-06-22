@@ -89,7 +89,7 @@ export default function Login() {
                   <ShieldCheck size={28} className="text-abat-blau" />
                 </div>
                 <h2 className="text-lg font-bold text-abat-dunkelgrau">Zwei-Faktor-Authentifizierung</h2>
-                <p className="text-sm text-abat-metallic">Bitte geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein.</p>
+                <p className="text-sm text-abat-grau">Bitte geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein.</p>
               </div>
 
               {error && (
@@ -125,7 +125,7 @@ export default function Login() {
                 ) : 'Bestätigen'}
               </button>
               <button type="button" onClick={() => { setStep('credentials'); setError(''); setTotpCode(''); }}
-                className="w-full text-sm text-abat-metallic hover:text-abat-dunkelgrau transition-colors py-1">
+                className="w-full text-sm text-abat-grau hover:text-abat-dunkelgrau transition-colors py-1">
                 ← Zurück zur Anmeldung
               </button>
             </form>

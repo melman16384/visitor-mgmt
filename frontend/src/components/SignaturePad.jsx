@@ -54,7 +54,7 @@ export default function SignaturePad({ onSave, onClear, label = 'Unterschrift', 
         />
       </div>
       <div className="flex items-center justify-between">
-        <p className="text-xs text-abat-metallic">Bitte mit Finger oder Stift unterschreiben</p>
+        <p className="text-xs text-abat-grau">Bitte mit Finger oder Stift unterschreiben</p>
         <div className="flex gap-2">
           <button
             type="button"
