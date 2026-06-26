@@ -11,8 +11,6 @@ import i18n from '../i18n/index.js';
 const LANGUAGES = [
   { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
   { code: 'en', label: 'English', flag: '🇬🇧' },
-  { code: 'lt', label: 'Lietuvių', flag: '🇱🇹' },
-  { code: 'ru', label: 'Русский', flag: '🇷🇺' },
 ];
 
 function LangSwitcher({ collapsed }) {

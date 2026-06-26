@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
-import { LogOut, CalendarPlus, CheckCircle2, Clock, CalendarClock, ChevronDown, ChevronUp, KeyRound } from 'lucide-react';
+import { LogOut, CalendarPlus, CheckCircle2, Clock, CalendarClock, ChevronDown, ChevronUp, KeyRound, Building2, User } from 'lucide-react';
 
 function hostClient() {
   const token = localStorage.getItem('host_token');
@@ -30,11 +30,19 @@ function fmtDate(s) {
   return `${d}.${m}.${y}`;
 }
 
+function VisitorCard({ children, className = '' }) {
+  return (
+    <div className={`bg-white rounded-xl border border-gray-200 p-4 shadow-sm ${className}`}>
+      {children}
+    </div>
+  );
+}
+
 function SectionHeader({ icon: Icon, iconClass, title, count, expanded, onToggle }) {
   return (
     <button
       onClick={onToggle}
-      className="w-full flex items-center justify-between px-5 py-4 bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl border border-gray-200"
+      className="w-full flex items-center justify-between px-4 py-3.5 bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl border border-gray-200"
     >
       <div className="flex items-center gap-2 font-semibold text-gray-800 text-sm">
         <Icon size={16} className={iconClass} />
@@ -128,12 +136,12 @@ export default function HostPortal() {
     setSubmitting(true);
     try {
       await hostClient().post('/preregistrations', form);
+      setSuccessMsg(t('hostPortal.form.success') || 'Vorregistrierung gespeichert.');
       setForm({
         visitor_first_name: '', visitor_last_name: '', visitor_email: '',
         visitor_company: '', expected_date: '', expected_time: '', purpose: '', notes: '',
       });
       await loadVisitors();
-      setActiveTab('visitors');
     } catch (err) {
       setFormError(err.response?.data?.error || t('common.error'));
     } finally {
@@ -149,44 +157,54 @@ export default function HostPortal() {
     );
   }
 
-  const inp = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500';
+  const inp = 'w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500';
+
+  const TABS = [
+    { key: 'visitors', label: t('hostPortal.tabs.visitors'), icon: CalendarClock },
+    { key: 'prereg', label: t('hostPortal.tabs.preregistration'), icon: CalendarPlus },
+    { key: 'password', label: t('hostPortal.tabs.password'), icon: KeyRound },
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <header className="bg-abat-dunkelgrau text-white shadow-lg">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <img src="/logo-light.png" alt="abat AG" className="h-8" />
+    <div className="min-h-screen bg-gray-100 pb-20 sm:pb-0">
+      {/* Header */}
+      <header className="bg-abat-dunkelgrau text-white shadow-lg sticky top-0 z-20">
+        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img src="/logo-light.png" alt="abat AG" className="h-7" />
             <div>
-              <p className="text-xs text-abat-hellgrau">{t('hostPortal.header')}</p>
-              <p className="font-semibold">{host.name}</p>
+              <p className="text-xs text-abat-hellgrau leading-none">{t('hostPortal.header')}</p>
+              <p className="font-semibold text-sm leading-tight">{host.name}</p>
             </div>
           </div>
           <button onClick={handleLogout}
-            className="flex items-center gap-2 text-abat-hellgrau hover:text-white transition-colors text-sm">
+            className="hidden sm:flex items-center gap-2 text-abat-hellgrau hover:text-white transition-colors text-sm">
             <LogOut size={16} /> {t('hostPortal.logout')}
+          </button>
+          <button onClick={handleLogout} className="sm:hidden text-abat-hellgrau hover:text-white">
+            <LogOut size={18} />
           </button>
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-6 py-6 space-y-6">
-        {/* Tabs */}
-        <div className="flex gap-2 border-b border-gray-200">
-          {[
-            { key: 'visitors', label: t('hostPortal.tabs.visitors'), icon: CalendarClock },
-            { key: 'prereg',   label: t('hostPortal.tabs.preregistration'), icon: CalendarPlus },
-            { key: 'password', label: t('hostPortal.tabs.password'), icon: KeyRound },
-          ].map(({ key, label, icon: Icon }) => (
+      {/* Desktop tabs */}
+      <div className="hidden sm:block max-w-3xl mx-auto px-4 pt-4">
+        <div className="flex gap-1 border-b border-gray-200 bg-white rounded-t-xl px-4">
+          {TABS.map(({ key, label, icon: Icon }) => (
             <button key={key} onClick={() => setActiveTab(key)}
               className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px ${
                 activeTab === key ? 'border-abat-blau text-abat-blau' : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}>
-              <Icon size={16} /> {label}
+              <Icon size={15} /> {label}
             </button>
           ))}
         </div>
+      </div>
 
-        {/* ── Tab: Visitors ───────────────────────────────────────────── */}
+      {/* Content */}
+      <div className="max-w-3xl mx-auto px-4 py-4 space-y-4">
+
+        {/* ── Visitors tab ─────────────────────────────────────────────── */}
         {activeTab === 'visitors' && (
           <div className="space-y-3">
 
@@ -198,35 +216,62 @@ export default function HostPortal() {
                 expanded={expandUpcoming} onToggle={() => setExpandUpcoming(v => !v)}
               />
               {expandUpcoming && (
-                <div className="mt-2 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
-                      <tr>
-                        <th className="text-left px-5 py-3">{t('hostPortal.table.name')}</th>
-                        <th className="text-left px-5 py-3">{t('hostPortal.table.company')}</th>
-                        <th className="text-left px-5 py-3">{t('hostPortal.table.expected')}</th>
-                        <th className="text-left px-5 py-3">{t('hostPortal.table.time')}</th>
-                        <th className="text-left px-5 py-3">{t('hostPortal.table.purpose')}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {loadingVisitors ? (
-                        <tr><td colSpan={5} className="text-center py-8">
-                          <div className="inline-block w-5 h-5 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
-                        </td></tr>
-                      ) : visitors.upcoming.length === 0 ? (
-                        <tr><td colSpan={5} className="text-center py-8 text-gray-400">{t('hostPortal.noUpcoming')}</td></tr>
-                      ) : visitors.upcoming.map(p => (
-                        <tr key={p.id} className="hover:bg-gray-50">
-                          <td className="px-5 py-3 font-medium text-gray-900">{p.visitor_first_name} {p.visitor_last_name}</td>
-                          <td className="px-5 py-3 text-gray-600">{p.visitor_company || '–'}</td>
-                          <td className="px-5 py-3 text-gray-600">{fmtDate(p.expected_date)}</td>
-                          <td className="px-5 py-3 text-gray-500">{p.expected_time ? p.expected_time.slice(0, 5) + ' Uhr' : '–'}</td>
-                          <td className="px-5 py-3 text-gray-500">{p.purpose || '–'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="mt-2 space-y-2">
+                  {loadingVisitors ? (
+                    <div className="flex justify-center py-6">
+                      <div className="w-5 h-5 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+                    </div>
+                  ) : visitors.upcoming.length === 0 ? (
+                    <p className="text-center py-6 text-sm text-gray-400">{t('hostPortal.noUpcoming')}</p>
+                  ) : (
+                    <>
+                      {/* Mobile cards */}
+                      <div className="sm:hidden space-y-2">
+                        {visitors.upcoming.map(p => (
+                          <VisitorCard key={p.id}>
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <p className="font-semibold text-gray-900 text-sm">{p.visitor_first_name} {p.visitor_last_name}</p>
+                                {p.visitor_company && <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5"><Building2 size={11} />{p.visitor_company}</p>}
+                              </div>
+                              <span className="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded-full whitespace-nowrap">
+                                {fmtDate(p.expected_date)}
+                              </span>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                              {p.expected_time && <span>{p.expected_time.slice(0, 5)} Uhr</span>}
+                              {p.purpose && <span>{p.purpose}</span>}
+                            </div>
+                          </VisitorCard>
+                        ))}
+                      </div>
+                      {/* Desktop table */}
+                      <div className="hidden sm:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+                            <tr>
+                              <th className="text-left px-5 py-3">{t('hostPortal.table.name')}</th>
+                              <th className="text-left px-5 py-3">{t('hostPortal.table.company')}</th>
+                              <th className="text-left px-5 py-3">{t('hostPortal.table.expected')}</th>
+                              <th className="text-left px-5 py-3">{t('hostPortal.table.time')}</th>
+                              <th className="text-left px-5 py-3">{t('hostPortal.table.purpose')}</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-50">
+                            {visitors.upcoming.map(p => (
+                              <tr key={p.id} className="hover:bg-gray-50">
+                                <td className="px-5 py-3 font-medium text-gray-900">{p.visitor_first_name} {p.visitor_last_name}</td>
+                                <td className="px-5 py-3 text-gray-600">{p.visitor_company || '–'}</td>
+                                <td className="px-5 py-3 text-gray-600">{fmtDate(p.expected_date)}</td>
+                                <td className="px-5 py-3 text-gray-500">{p.expected_time ? p.expected_time.slice(0, 5) + ' Uhr' : '–'}</td>
+                                <td className="px-5 py-3 text-gray-500">{p.purpose || '–'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -239,37 +284,62 @@ export default function HostPortal() {
                 expanded={expandActive} onToggle={() => setExpandActive(v => !v)}
               />
               {expandActive && (
-                <div className="mt-2 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
-                      <tr>
-                        <th className="text-left px-5 py-3">{t('hostPortal.table.name')}</th>
-                        <th className="text-left px-5 py-3">{t('hostPortal.table.company')}</th>
-                        <th className="text-left px-5 py-3">{t('hostPortal.table.abatId')}</th>
-                        <th className="text-left px-5 py-3">{t('hostPortal.table.checkedIn')}</th>
-                        <th className="text-left px-5 py-3">{t('hostPortal.table.status')}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {loadingVisitors ? (
-                        <tr><td colSpan={5} className="text-center py-8">
-                          <div className="inline-block w-5 h-5 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
-                        </td></tr>
-                      ) : visitors.active.length === 0 ? (
-                        <tr><td colSpan={5} className="text-center py-8 text-gray-400">{t('hostPortal.noActive')}</td></tr>
-                      ) : visitors.active.map(v => (
-                        <tr key={v.id} className="hover:bg-gray-50">
-                          <td className="px-5 py-3 font-medium text-gray-900">{v.first_name} {v.last_name}</td>
-                          <td className="px-5 py-3 text-gray-600">{v.company || '–'}</td>
-                          <td className="px-5 py-3 font-mono text-xs text-gray-500">{v.abat_id || '–'}</td>
-                          <td className="px-5 py-3 text-gray-500">{fmt(v.checked_in_at)}</td>
-                          <td className="px-5 py-3">
-                            <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">{t('hostPortal.present')}</span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="mt-2 space-y-2">
+                  {loadingVisitors ? (
+                    <div className="flex justify-center py-6">
+                      <div className="w-5 h-5 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+                    </div>
+                  ) : visitors.active.length === 0 ? (
+                    <p className="text-center py-6 text-sm text-gray-400">{t('hostPortal.noActive')}</p>
+                  ) : (
+                    <>
+                      {/* Mobile cards */}
+                      <div className="sm:hidden space-y-2">
+                        {visitors.active.map(v => (
+                          <VisitorCard key={v.id}>
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <p className="font-semibold text-gray-900 text-sm">{v.first_name} {v.last_name}</p>
+                                {v.company && <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5"><Building2 size={11} />{v.company}</p>}
+                              </div>
+                              <span className="text-xs text-green-700 font-semibold bg-green-100 px-2 py-0.5 rounded-full whitespace-nowrap">{t('hostPortal.present')}</span>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                              {v.abat_id && <span className="font-mono">{v.abat_id}</span>}
+                              <span>seit {fmt(v.checked_in_at).slice(12)}</span>
+                            </div>
+                          </VisitorCard>
+                        ))}
+                      </div>
+                      {/* Desktop table */}
+                      <div className="hidden sm:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+                            <tr>
+                              <th className="text-left px-5 py-3">{t('hostPortal.table.name')}</th>
+                              <th className="text-left px-5 py-3">{t('hostPortal.table.company')}</th>
+                              <th className="text-left px-5 py-3">{t('hostPortal.table.abatId')}</th>
+                              <th className="text-left px-5 py-3">{t('hostPortal.table.checkedIn')}</th>
+                              <th className="text-left px-5 py-3">{t('hostPortal.table.status')}</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-50">
+                            {visitors.active.map(v => (
+                              <tr key={v.id} className="hover:bg-gray-50">
+                                <td className="px-5 py-3 font-medium text-gray-900">{v.first_name} {v.last_name}</td>
+                                <td className="px-5 py-3 text-gray-600">{v.company || '–'}</td>
+                                <td className="px-5 py-3 font-mono text-xs text-gray-500">{v.abat_id || '–'}</td>
+                                <td className="px-5 py-3 text-gray-500">{fmt(v.checked_in_at)}</td>
+                                <td className="px-5 py-3">
+                                  <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">{t('hostPortal.present')}</span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -282,44 +352,69 @@ export default function HostPortal() {
                 expanded={expandCompleted} onToggle={() => setExpandCompleted(v => !v)}
               />
               {expandCompleted && (
-                <div className="mt-2 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
-                      <tr>
-                        <th className="text-left px-5 py-3">{t('hostPortal.table.name')}</th>
-                        <th className="text-left px-5 py-3">{t('hostPortal.table.company')}</th>
-                        <th className="text-left px-5 py-3">{t('hostPortal.table.abatId')}</th>
-                        <th className="text-left px-5 py-3">{t('hostPortal.table.checkedIn')}</th>
-                        <th className="text-left px-5 py-3">{t('visitors.table.checkedOut')}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {loadingVisitors ? (
-                        <tr><td colSpan={5} className="text-center py-8">
-                          <div className="inline-block w-5 h-5 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
-                        </td></tr>
-                      ) : visitors.completed.length === 0 ? (
-                        <tr><td colSpan={5} className="text-center py-8 text-gray-400">{t('hostPortal.noCompleted')}</td></tr>
-                      ) : visitors.completed.map(v => (
-                        <tr key={v.id} className="hover:bg-gray-50">
-                          <td className="px-5 py-3 font-medium text-gray-900">{v.first_name} {v.last_name}</td>
-                          <td className="px-5 py-3 text-gray-600">{v.company || '–'}</td>
-                          <td className="px-5 py-3 font-mono text-xs text-gray-500">{v.abat_id || '–'}</td>
-                          <td className="px-5 py-3 text-gray-500">{fmt(v.checked_in_at)}</td>
-                          <td className="px-5 py-3 text-gray-500">{fmt(v.checked_out_at)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="mt-2 space-y-2">
+                  {loadingVisitors ? (
+                    <div className="flex justify-center py-6">
+                      <div className="w-5 h-5 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+                    </div>
+                  ) : visitors.completed.length === 0 ? (
+                    <p className="text-center py-6 text-sm text-gray-400">{t('hostPortal.noCompleted')}</p>
+                  ) : (
+                    <>
+                      {/* Mobile cards */}
+                      <div className="sm:hidden space-y-2">
+                        {visitors.completed.map(v => (
+                          <VisitorCard key={v.id}>
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <p className="font-semibold text-gray-900 text-sm">{v.first_name} {v.last_name}</p>
+                                {v.company && <p className="text-xs text-gray-500">{v.company}</p>}
+                              </div>
+                              <span className="text-xs text-gray-500 font-mono">{v.abat_id || ''}</span>
+                            </div>
+                            <div className="mt-2 text-xs text-gray-400 flex gap-3">
+                              <span>ein: {fmt(v.checked_in_at).slice(0, 10)}</span>
+                              <span>aus: {fmt(v.checked_out_at).slice(0, 10)}</span>
+                            </div>
+                          </VisitorCard>
+                        ))}
+                      </div>
+                      {/* Desktop table */}
+                      <div className="hidden sm:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+                            <tr>
+                              <th className="text-left px-5 py-3">{t('hostPortal.table.name')}</th>
+                              <th className="text-left px-5 py-3">{t('hostPortal.table.company')}</th>
+                              <th className="text-left px-5 py-3">{t('hostPortal.table.abatId')}</th>
+                              <th className="text-left px-5 py-3">{t('hostPortal.table.checkedIn')}</th>
+                              <th className="text-left px-5 py-3">{t('visitors.table.checkedOut')}</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-50">
+                            {visitors.completed.map(v => (
+                              <tr key={v.id} className="hover:bg-gray-50">
+                                <td className="px-5 py-3 font-medium text-gray-900">{v.first_name} {v.last_name}</td>
+                                <td className="px-5 py-3 text-gray-600">{v.company || '–'}</td>
+                                <td className="px-5 py-3 font-mono text-xs text-gray-500">{v.abat_id || '–'}</td>
+                                <td className="px-5 py-3 text-gray-500">{fmt(v.checked_in_at)}</td>
+                                <td className="px-5 py-3 text-gray-500">{fmt(v.checked_out_at)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {/* ── Tab: Preregistration Form ────────────────────────────────── */}
+        {/* ── Preregistration tab ───────────────────────────────────────── */}
         {activeTab === 'prereg' && (
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
             <h2 className="text-base font-semibold text-gray-800 mb-1">{t('hostPortal.form.title')}</h2>
             <p className="text-sm text-gray-500 mb-5">{t('hostPortal.form.subtitle')}</p>
 
@@ -334,7 +429,7 @@ export default function HostPortal() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('hostPortal.form.firstName')} *</label>
                   <input className={inp} value={form.visitor_first_name}
@@ -347,7 +442,7 @@ export default function HostPortal() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('hostPortal.form.email')} <span className="text-gray-400 font-normal">({t('hostPortal.form.emailHint')})</span></label>
                   <input type="email" className={inp} value={form.visitor_email}
@@ -360,7 +455,7 @@ export default function HostPortal() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('hostPortal.form.date')} *</label>
                   <input type="date" className={inp} value={form.expected_date}
@@ -393,7 +488,7 @@ export default function HostPortal() {
               </div>
 
               <button type="submit" disabled={submitting}
-                className="w-full bg-abat-blau hover:bg-primary-600 disabled:opacity-50 text-white font-semibold py-3 px-4 rounded-xl transition-colors text-sm">
+                className="w-full bg-abat-blau hover:bg-primary-600 disabled:opacity-50 text-white font-semibold py-3.5 px-4 rounded-xl transition-colors text-sm">
                 {submitting ? (
                   <span className="flex items-center justify-center gap-2">
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -404,9 +499,10 @@ export default function HostPortal() {
             </form>
           </div>
         )}
-        {/* ── Tab: Password ───────────────────────────────────────────── */}
+
+        {/* ── Password tab ─────────────────────────────────────────────── */}
         {activeTab === 'password' && (
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 max-w-md">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
             <h2 className="text-base font-semibold text-gray-800 mb-1">{t('hostPortal.pw.title')}</h2>
             <p className="text-sm text-gray-500 mb-5">{t('hostPortal.pw.subtitle')}</p>
 
@@ -437,7 +533,7 @@ export default function HostPortal() {
                   onChange={e => setPwForm(f => ({ ...f, confirm_password: e.target.value }))} required />
               </div>
               <button type="submit" disabled={pwSubmitting}
-                className="w-full bg-abat-blau hover:bg-primary-600 disabled:opacity-50 text-white font-semibold py-3 px-4 rounded-xl transition-colors text-sm">
+                className="w-full bg-abat-blau hover:bg-primary-600 disabled:opacity-50 text-white font-semibold py-3.5 px-4 rounded-xl transition-colors text-sm">
                 {pwSubmitting ? (
                   <span className="flex items-center justify-center gap-2">
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -449,6 +545,19 @@ export default function HostPortal() {
           </div>
         )}
       </div>
+
+      {/* Mobile bottom navigation */}
+      <nav className="sm:hidden fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 z-30 flex">
+        {TABS.map(({ key, label, icon: Icon }) => (
+          <button key={key} onClick={() => setActiveTab(key)}
+            className={`flex-1 flex flex-col items-center gap-1 py-3 text-xs font-medium transition-colors ${
+              activeTab === key ? 'text-abat-blau' : 'text-gray-400'
+            }`}>
+            <Icon size={20} strokeWidth={activeTab === key ? 2.5 : 1.5} />
+            <span>{label}</span>
+          </button>
+        ))}
+      </nav>
     </div>
   );
 }

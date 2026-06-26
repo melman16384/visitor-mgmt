@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Plus, LogOut, FileText, Trash2, Users, UserCheck, UserX, CalendarClock, Printer } from 'lucide-react';
+import { Search, Plus, LogOut, FileText, Trash2, Users, UserCheck, UserX, CalendarClock } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import Modal from '../components/Modal';
@@ -58,7 +58,6 @@ export default function Visitors() {
   const [purposes, setPurposes] = useState([]);
 
   const [checkingOut, setCheckingOut] = useState(null);
-  const [printing, setPrinting] = useState(null);
   const [newVisitId, setNewVisitId] = useState(null);
 
   const TABS = [
@@ -141,18 +140,6 @@ export default function Visitors() {
 
   const handleBadge = (visitorId, visitId) => {
     window.open(`/api/visitors/${visitorId}/badge/${visitId}`, '_blank');
-  };
-
-  const handlePrint = async (visitorId, visitId) => {
-    setPrinting(visitId);
-    try {
-      await client.post(`/visitors/${visitorId}/print-badge/${visitId}`);
-      showToast(t('visitors.printBadge'));
-    } catch (err) {
-      showToast(err.response?.data?.error || t('common.error'), 'error');
-    } finally {
-      setPrinting(null);
-    }
   };
 
   const fmtDate = (d) => d ? format(new Date(d), 'dd.MM.yy HH:mm', { locale: de }) : '–';
@@ -294,12 +281,6 @@ export default function Visitors() {
                           <button onClick={() => handleBadge(v.id, v.visit_id)}
                             className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title={t('visitors.printBadge')}>
                             <FileText size={15} />
-                          </button>
-                        )}
-                        {v.visit_id && v.visit_status === 'active' && (
-                          <button onClick={() => handlePrint(v.id, v.visit_id)} disabled={printing === v.visit_id}
-                            className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors disabled:opacity-50" title={t('visitors.printBadge')}>
-                            <Printer size={15} className={printing === v.visit_id ? 'animate-pulse' : ''} />
                           </button>
                         )}
                         {v.visit_status === 'active' && v.visit_id && (

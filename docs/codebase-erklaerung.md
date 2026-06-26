@@ -1,6 +1,6 @@
 # Codebase-Erklärung — Besucherverwaltungssystem
 
-> Technische Tiefenanalyse mit Code-Snippets · Stand: Juni 2026
+> Technische Tiefenanalyse mit Code-Snippets · Stand: 26. Juni 2026
 
 ---
 
@@ -265,7 +265,8 @@ router.post('/login', (req, res) => {
 
   log('LOGIN', email, 'Admin-Login erfolgreich');
 
-  const { password_hash, ...userWithoutHash } = user; // Hash NIE an Client senden
+  // password_hash NIE an Client senden (totp_* Felder ebenfalls entfernt)
+  const { password_hash, ...userWithoutHash } = user;
   res.json({ token, user: userWithoutHash });
 });
 ```
@@ -979,7 +980,7 @@ Nach 6 Sekunden kehrt der Kiosk automatisch zum Startbildschirm zurück.
 
 Das System hat **zwei unabhängige i18n-Systeme**:
 
-### Admin-Panel: react-i18next (DE / EN / LT / RU)
+### Admin-Panel: react-i18next (DE / EN)
 
 ```js
 // frontend/src/i18n/index.js
@@ -987,15 +988,17 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import de from './de';
 import en from './en';
-// ...
+
+// Gespeicherte Sprache validieren — ungültige Werte (z.B. alte 'lt'/'ru') auf 'de' zurücksetzen
+const savedLang = ['de', 'en'].includes(localStorage.getItem('admin_lang'))
+  ? localStorage.getItem('admin_lang')
+  : 'de';
 
 i18n.use(initReactI18next).init({
-  lng: localStorage.getItem('admin_lang') || 'de',
+  lng: savedLang,
   resources: {
     de: { translation: de },
     en: { translation: en },
-    lt: { translation: lt },
-    ru: { translation: ru },
   },
   interpolation: { escapeValue: false },
 });
@@ -1004,8 +1007,8 @@ i18n.use(initReactI18next).init({
 Verwendung in Komponenten:
 ```jsx
 const { t } = useTranslation();
-<button>{t('common.save')}</button>       // "Speichern" / "Save" / "Išsaugoti" / "Сохранить"
-<span>{t('visitors.tabs.active')}</span>  // "Aktiv" / "Active" / ...
+<button>{t('common.save')}</button>       // "Speichern" / "Save"
+<span>{t('visitors.tabs.active')}</span>  // "Aktiv" / "Active"
 ```
 
 ### Kiosk: Eigenes Context-System (DE / EN)
@@ -1033,6 +1036,8 @@ export function KioskLangProvider({ children }) {
 ```
 
 **Warum zwei Systeme?** Der Kiosk ist komplett eigenständig (kein Login, anderes UX), hat weniger Texte und der Admin kann eine andere Sprache wählen als der Kiosk-Standort anzeigt — Deutsch im Admin, Englisch für internationale Besucher am Kiosk.
+
+> **Hinweis:** LT (Litauisch) und RU (Russisch) wurden aus dem Admin-Panel entfernt. Falls wieder benötigt: Sprachdatei anlegen, in `i18n/index.js` registrieren, erlaubte Codes im Fallback-Array ergänzen, in `Sidebar.jsx` zum `LANGUAGES`-Array hinzufügen.
 
 ---
 

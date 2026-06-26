@@ -157,45 +157,10 @@ router.post('/gdpr/cleanup', ...adminOnly, (req, res) => {
   res.json({ anonymized: result.changes, cutoff_date: cutoff, retention_days: days });
 });
 
-// GET /ms-sso — current MS SSO config (secret masked)
-router.get('/ms-sso', ...superadminOnly, (req, res) => {
-  const get = (key) => db.prepare('SELECT value FROM system_settings WHERE key = ?').get(key)?.value || '';
-  const secret = get('ms_client_secret');
-  res.json({
-    ms_sso_enabled:  get('ms_sso_enabled') || '0',
-    ms_client_id:    get('ms_client_id'),
-    ms_client_secret: secret ? '••••••••' : '',
-    ms_tenant_id:    get('ms_tenant_id'),
-  });
-});
-
-// PUT /ms-sso — save MS SSO config
-router.put('/ms-sso', ...superadminOnly, (req, res) => {
-  const upsert = db.prepare('INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)');
-  const tx = db.transaction((body) => {
-    if ('ms_sso_enabled' in body) upsert.run('ms_sso_enabled', String(body.ms_sso_enabled));
-    if ('ms_client_id'   in body) upsert.run('ms_client_id',   String(body.ms_client_id));
-    if ('ms_tenant_id'   in body) upsert.run('ms_tenant_id',   String(body.ms_tenant_id));
-    if (body.ms_client_secret && body.ms_client_secret !== '••••••••') {
-      upsert.run('ms_client_secret', body.ms_client_secret);
-    }
-  });
-  tx(req.body);
-  const get = (key) => db.prepare('SELECT value FROM system_settings WHERE key = ?').get(key)?.value || '';
-  const secret = get('ms_client_secret');
-  res.json({
-    ms_sso_enabled:   get('ms_sso_enabled') || '0',
-    ms_client_id:     get('ms_client_id'),
-    ms_client_secret: secret ? '••••••••' : '',
-    ms_tenant_id:     get('ms_tenant_id'),
-  });
-});
-
-// GET /ms-sso/status — public — tells frontend if SSO button should appear
+// GET /ms-sso/status — public — reads from .env
 router.get('/ms-sso/status', (req, res) => {
-  const get = (key) => db.prepare('SELECT value FROM system_settings WHERE key = ?').get(key)?.value || '';
-  const enabled = get('ms_sso_enabled') === '1';
-  const configured = !!(get('ms_client_id') && get('ms_client_secret') && get('ms_tenant_id'));
+  const enabled = process.env.MS_SSO_ENABLED === 'true' || process.env.MS_SSO_ENABLED === '1';
+  const configured = !!(process.env.MS_CLIENT_ID && process.env.MS_CLIENT_SECRET && process.env.MS_TENANT_ID);
   res.json({ available: enabled && configured });
 });
 

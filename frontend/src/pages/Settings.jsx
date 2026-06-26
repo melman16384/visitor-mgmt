@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Edit2, Trash2, MapPin, Mail, Key, Save, Check, ListChecks, Users, ShieldCheck, Eye, EyeOff, Printer, Wifi, Clock, GripVertical, RefreshCw, PlugZap } from 'lucide-react';
+import { Plus, Edit2, Trash2, MapPin, Mail, Key, Save, Check, ListChecks, Users, ShieldCheck, Eye, EyeOff, Clock, GripVertical, RefreshCw } from 'lucide-react';
 import Modal from '../components/Modal';
 import client from '../api/client';
 import { showToast } from '../components/Layout';
@@ -309,12 +309,6 @@ function UsersTab() {
     catch { showToast(t('common.error'), 'error'); }
   };
 
-  const handleReset2FA = async (id) => {
-    if (!confirm('2FA für diesen Benutzer zurücksetzen?')) return;
-    try { await client.post(`/users/${id}/reset-2fa`); showToast('2FA zurückgesetzt'); load(); }
-    catch { showToast(t('common.error'), 'error'); }
-  };
-
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -332,7 +326,6 @@ function UsersTab() {
               <th className="text-left px-5 py-3">{t('common.role')}</th>
               <th className="text-left px-5 py-3">{t('settings.users.locations')}</th>
               <th className="text-left px-5 py-3">{t('common.status')}</th>
-              <th className="text-left px-5 py-3">2FA</th>
               <th className="px-5 py-3"></th>
             </tr>
           </thead>
@@ -370,19 +363,9 @@ function UsersTab() {
                   )}
                 </td>
                 <td className="px-5 py-4">
-                  {u.totp_enabled ? (
-                    <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-semibold">Aktiv</span>
-                  ) : (
-                    <span className="text-gray-300 text-xs">–</span>
-                  )}
-                </td>
-                <td className="px-5 py-4">
                   <div className="flex items-center gap-1 justify-end">
                     <button onClick={() => openEdit(u)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Edit2 size={14} /></button>
                     <button onClick={() => setResetPw({ userId: u.id, password: '' })} className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors" title="Passwort zurücksetzen"><Key size={14} /></button>
-                    {u.totp_enabled && (
-                      <button onClick={() => handleReset2FA(u.id)} className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="2FA zurücksetzen"><ShieldCheck size={14} /></button>
-                    )}
                     {isLocked(u) && (
                       <button onClick={() => handleUnlock(u.id)} className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Account entsperren"><RefreshCw size={14} /></button>
                     )}
@@ -485,76 +468,6 @@ function UsersTab() {
         </Modal>
       )}
     </div>
-  );
-}
-
-function PrinterTab() {
-  const { t } = useTranslation();
-  const [settings, setSettings] = useState({ printer_enabled: 'false', printer_ip: '', printer_port: '9100' });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [testing, setTesting] = useState(false);
-
-  useEffect(() => {
-    client.get('/settings/system').then(r => { setSettings(s => ({ ...s, ...r.data })); setLoading(false); }).catch(() => setLoading(false));
-  }, []);
-
-  const handleSave = async (e) => {
-    e.preventDefault(); setSaving(true);
-    try { const r = await client.put('/settings/system', settings); setSettings(r.data); showToast(t('settings.printer.saved')); }
-    catch { showToast(t('common.error'), 'error'); }
-    finally { setSaving(false); }
-  };
-
-  const handleTest = async () => {
-    setTesting(true);
-    try { await client.post('/visitors/printer-test'); showToast(t('settings.printer.testSuccess')); }
-    catch (err) { showToast(err.response?.data?.error || t('settings.printer.testError'), 'error'); }
-    finally { setTesting(false); }
-  };
-
-  if (loading) return <div className="text-gray-400 text-sm">{t('common.loading')}</div>;
-
-  return (
-    <form onSubmit={handleSave} className="space-y-6 max-w-lg">
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700">
-        <strong>Brother QL-820NWB</strong> — Etikettengröße DK-11202 (62×100 mm). Drucker muss im selben Netzwerk erreichbar sein (Port 9100, RAW TCP).
-      </div>
-
-      <label className="flex items-center gap-3 cursor-pointer">
-        <input type="checkbox" className="w-4 h-4 text-primary-600 rounded"
-          checked={settings.printer_enabled === 'true'}
-          onChange={e => setSettings(s => ({ ...s, printer_enabled: e.target.checked ? 'true' : 'false' }))} />
-        <span className="text-sm font-medium text-gray-700">{t('settings.printer.enable')}</span>
-      </label>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.printer.ip')} *</label>
-        <input type="text" placeholder="z.B. 192.168.1.100"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono"
-          value={settings.printer_ip} onChange={e => setSettings(s => ({ ...s, printer_ip: e.target.value }))} />
-        <p className="text-xs text-gray-400 mt-1">IP-Adresse des QL-820NWB (am Drucker: Netzwerk → IP-Adresse ablesen)</p>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.printer.port')}</label>
-        <input type="number" min="1" max="65535"
-          className="w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono"
-          value={settings.printer_port} onChange={e => setSettings(s => ({ ...s, printer_port: e.target.value }))} />
-        <p className="text-xs text-gray-400 mt-1">Standard: 9100 (RAW TCP)</p>
-      </div>
-
-      <div className="flex gap-3">
-        <button type="submit" disabled={saving}
-          className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold px-5 py-2.5 rounded-lg transition-colors text-sm disabled:opacity-50">
-          <Save size={15} /> {saving ? t('common.loading') : t('settings.printer.save')}
-        </button>
-        <button type="button" onClick={handleTest} disabled={testing || !settings.printer_ip}
-          className="flex items-center gap-2 bg-gray-700 hover:bg-gray-800 text-white font-semibold px-5 py-2.5 rounded-lg transition-colors text-sm disabled:opacity-40">
-          <Wifi size={15} /> {testing ? t('common.loading') : t('settings.printer.test')}
-        </button>
-      </div>
-    </form>
   );
 }
 
@@ -1017,266 +930,6 @@ function PasswordTab() {
   );
 }
 
-function MicrosoftSsoTab() {
-  const inp = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500';
-  const label = 'block text-sm font-medium text-gray-700 mb-1';
-
-  const [cfg, setCfg] = useState({
-    ms_sso_enabled: '0',
-    ms_client_id: '',
-    ms_client_secret: '',
-    ms_tenant_id: '',
-  });
-  const [showSecret, setShowSecret] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    client.get('/settings/ms-sso').then(r => setCfg(r.data)).catch(() => {});
-  }, []);
-
-  const set = (k, v) => setCfg(c => ({ ...c, [k]: v }));
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const r = await client.put('/settings/ms-sso', cfg);
-      setCfg(r.data);
-      showToast('Microsoft SSO gespeichert');
-    } catch {
-      showToast('Fehler beim Speichern', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const isEnabled = cfg.ms_sso_enabled === '1';
-
-  return (
-    <div className="space-y-6 max-w-2xl">
-      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-6">
-        <div>
-          <h2 className="text-base font-semibold text-gray-900 mb-1">Microsoft Single Sign-On</h2>
-          <p className="text-sm text-gray-500">
-            Mitarbeiter können sich über ihr Microsoft-Konto (Azure AD / Entra ID) am Gastgeber-Portal anmelden und werden automatisch als Gastgeber angelegt.
-          </p>
-        </div>
-
-        {/* Enable toggle */}
-        <div className="flex items-center justify-between py-3 border-b border-gray-100">
-          <p className="font-semibold text-gray-800 text-sm">Microsoft SSO aktivieren</p>
-          <button onClick={() => set('ms_sso_enabled', isEnabled ? '0' : '1')}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isEnabled ? 'bg-primary-600' : 'bg-gray-300'}`}>
-            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${isEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <label className={label}>Client-ID (Application ID)</label>
-            <input className={inp} value={cfg.ms_client_id}
-              onChange={e => set('ms_client_id', e.target.value)}
-              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
-          </div>
-          <div>
-            <label className={label}>Client-Secret</label>
-            <div className="relative">
-              <input type={showSecret ? 'text' : 'password'} className={`${inp} pr-10`}
-                value={cfg.ms_client_secret}
-                onChange={e => set('ms_client_secret', e.target.value)}
-                placeholder="••••••••" />
-              <button type="button" onClick={() => setShowSecret(s => !s)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                {showSecret ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-          </div>
-          <div>
-            <label className={label}>Tenant-ID (Verzeichnis-ID)</label>
-            <input className={inp} value={cfg.ms_tenant_id}
-              onChange={e => set('ms_tenant_id', e.target.value)}
-              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
-          </div>
-        </div>
-
-        {/* Setup instructions */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm space-y-2">
-          <p className="font-semibold text-blue-800">Azure App Registration – Anleitung</p>
-          <ol className="list-decimal list-inside text-blue-700 space-y-1 text-xs">
-            <li>Öffnen Sie das <strong>Azure Portal</strong> → App-Registrierungen → Neue Registrierung</li>
-            <li>Name: z. B. „Visitor Management", Kontotyp: <em>Nur dieser Organisation</em></li>
-            <li>Redirect-URI: <code className="bg-blue-100 px-1 rounded">{window.location.origin}/api/host-portal/auth/microsoft/callback</code></li>
-            <li>Nach der Erstellung: Client-ID und Tenant-ID aus der Übersicht kopieren</li>
-            <li>Unter <em>Zertifikate &amp; Geheimnisse</em>: Neues Client-Secret erstellen und kopieren</li>
-            <li>Unter <em>API-Berechtigungen</em>: <code className="bg-blue-100 px-1 rounded">openid profile email</code> sicherstellen</li>
-          </ol>
-        </div>
-
-        <button onClick={handleSave} disabled={saving}
-          className="bg-primary-600 hover:bg-primary-700 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors disabled:opacity-50">
-          {saving ? 'Speichern…' : 'Einstellungen speichern'}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function TwoFATab() {
-  const [step, setStep] = useState('idle'); // idle | setup | confirm | active | disabling
-  const [qr, setQr] = useState('');
-  const [secret, setSecret] = useState('');
-  const [code, setCode] = useState('');
-  const [disableForm, setDisableForm] = useState({ password: '', code: '' });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const { user } = useAuth();
-  const [twoFAEnabled, setTwoFAEnabled] = useState(false);
-
-  useEffect(() => {
-    client.get('/auth/me').then(r => setTwoFAEnabled(!!r.data.user?.totp_enabled)).catch(() => {});
-  }, []);
-
-  const startSetup = async () => {
-    setError(''); setLoading(true);
-    try {
-      const res = await client.post('/auth/2fa/setup');
-      setQr(res.data.qr);
-      setSecret(res.data.secret);
-      setCode('');
-      setStep('setup');
-    } catch { setError('Fehler beim Einrichten'); }
-    finally { setLoading(false); }
-  };
-
-  const confirmSetup = async (e) => {
-    e.preventDefault(); setError(''); setLoading(true);
-    try {
-      await client.post('/auth/2fa/confirm', { code });
-      setTwoFAEnabled(true);
-      setStep('idle');
-      showToast('2FA erfolgreich aktiviert');
-    } catch (err) {
-      setError(err.response?.data?.error || 'Ungültiger Code');
-    } finally { setLoading(false); }
-  };
-
-  const handleDisable = async (e) => {
-    e.preventDefault(); setError(''); setLoading(true);
-    try {
-      await client.post('/auth/2fa/disable', disableForm);
-      setTwoFAEnabled(false);
-      setDisableForm({ password: '', code: '' });
-      setStep('idle');
-      showToast('2FA deaktiviert');
-    } catch (err) {
-      setError(err.response?.data?.error || 'Fehler beim Deaktivieren');
-    } finally { setLoading(false); }
-  };
-
-  return (
-    <div className="space-y-6 max-w-lg">
-      {/* Status banner */}
-      <div className={`flex items-center gap-3 rounded-xl px-5 py-4 ${twoFAEnabled ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200'}`}>
-        <ShieldCheck size={22} className={twoFAEnabled ? 'text-green-600' : 'text-gray-400'} />
-        <div>
-          <p className={`font-semibold text-sm ${twoFAEnabled ? 'text-green-800' : 'text-gray-700'}`}>
-            {twoFAEnabled ? '2FA ist aktiv' : '2FA ist nicht eingerichtet'}
-          </p>
-          <p className="text-xs text-gray-500 mt-0.5">
-            {twoFAEnabled
-              ? 'Beim nächsten Login wird ein Code aus Ihrer Authenticator-App benötigt.'
-              : 'Schützen Sie Ihren Account mit einem zweiten Faktor (TOTP).'}
-          </p>
-        </div>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">{error}</div>
-      )}
-
-      {/* Setup flow */}
-      {!twoFAEnabled && step === 'idle' && (
-        <button onClick={startSetup} disabled={loading}
-          className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50 text-sm">
-          <ShieldCheck size={16} />
-          {loading ? 'Wird vorbereitet…' : '2FA einrichten'}
-        </button>
-      )}
-
-      {step === 'setup' && (
-        <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-5">
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-1">Schritt 1 – QR-Code scannen</h3>
-            <p className="text-sm text-gray-500">Öffnen Sie Ihre Authenticator-App (z. B. Google Authenticator, Microsoft Authenticator oder Authy) und scannen Sie diesen QR-Code.</p>
-          </div>
-          <div className="flex justify-center">
-            <img src={qr} alt="2FA QR-Code" className="w-48 h-48 rounded-xl border border-gray-200 p-2" />
-          </div>
-          <div>
-            <p className="text-xs text-gray-500 mb-1">Oder manuell eingeben:</p>
-            <code className="block bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs font-mono break-all text-gray-700 select-all">{secret}</code>
-          </div>
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-1">Schritt 2 – Code bestätigen</h3>
-            <p className="text-sm text-gray-500 mb-3">Geben Sie den 6-stelligen Code aus der App ein, um 2FA zu aktivieren.</p>
-            <form onSubmit={confirmSetup} className="flex gap-2">
-              <input
-                type="text" inputMode="numeric"
-                value={code} onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="000000"
-                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-primary-500"
-                required autoFocus />
-              <button type="submit" disabled={loading || code.length !== 6}
-                className="bg-primary-600 hover:bg-primary-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors disabled:opacity-50 text-sm">
-                {loading ? '…' : 'Aktivieren'}
-              </button>
-            </form>
-          </div>
-          <button onClick={() => { setStep('idle'); setError(''); }} className="text-sm text-gray-400 hover:text-gray-600">Abbrechen</button>
-        </div>
-      )}
-
-      {/* Disable flow */}
-      {twoFAEnabled && step === 'idle' && (
-        <button onClick={() => setStep('disabling')}
-          className="flex items-center gap-2 border border-red-200 text-red-600 hover:bg-red-50 font-semibold px-5 py-2.5 rounded-lg transition-colors text-sm">
-          2FA deaktivieren
-        </button>
-      )}
-
-      {step === 'disabling' && (
-        <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
-          <h3 className="font-semibold text-gray-900">2FA deaktivieren</h3>
-          <p className="text-sm text-gray-500">Geben Sie zur Bestätigung Ihr Passwort und den aktuellen Code aus Ihrer Authenticator-App ein.</p>
-          {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-sm">{error}</div>}
-          <form onSubmit={handleDisable} className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Passwort</label>
-              <input type="password" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                value={disableForm.password} onChange={e => setDisableForm(f => ({ ...f, password: e.target.value }))} required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Authenticator-Code</label>
-              <input type="text" inputMode="numeric" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-primary-500"
-                value={disableForm.code} onChange={e => setDisableForm(f => ({ ...f, code: e.target.value.replace(/\D/g, '').slice(0, 6) }))}
-                placeholder="000000" required />
-            </div>
-            <div className="flex gap-2">
-              <button type="submit" disabled={loading}
-                className="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors disabled:opacity-50 text-sm">
-                {loading ? 'Wird deaktiviert…' : 'Deaktivieren'}
-              </button>
-              <button type="button" onClick={() => { setStep('idle'); setError(''); }}
-                className="border border-gray-300 text-gray-600 hover:bg-gray-50 font-semibold px-4 py-2 rounded-lg transition-colors text-sm">
-                Abbrechen
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function Settings() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('locations');
@@ -1287,12 +940,9 @@ export default function Settings() {
     { key: 'purposes', label: t('settings.tabs.purposes'), icon: ListChecks },
     { key: 'users', label: t('settings.tabs.users'), icon: Users, superadminOnly: true },
     { key: 'auto-checkout', label: t('settings.tabs.autoCheckout'), icon: Clock, superadminOnly: true },
-    { key: 'printer', label: t('settings.tabs.printer'), icon: Printer },
-    { key: 'ms-sso', label: 'Microsoft SSO', icon: PlugZap, superadminOnly: true },
     { key: 'gdpr', label: t('settings.tabs.gdpr'), icon: ShieldCheck },
     { key: 'email', label: t('settings.tabs.email'), icon: Mail },
     { key: 'password', label: t('settings.tabs.password'), icon: Key },
-    { key: '2fa', label: 'Zwei-Faktor (2FA)', icon: ShieldCheck },
   ];
 
   return (
@@ -1323,12 +973,9 @@ export default function Settings() {
         {activeTab === 'purposes' && <PurposesTab />}
         {activeTab === 'users' && user?.role === 'superadmin' && <UsersTab />}
         {activeTab === 'auto-checkout' && user?.role === 'superadmin' && <AutoCheckoutTab />}
-        {activeTab === 'ms-sso' && user?.role === 'superadmin' && <MicrosoftSsoTab />}
-        {activeTab === 'printer' && <PrinterTab />}
         {activeTab === 'gdpr' && <GdprTab />}
         {activeTab === 'email' && <EmailTab />}
         {activeTab === 'password' && <PasswordTab />}
-        {activeTab === '2fa' && <TwoFATab />}
       </div>
     </div>
   );

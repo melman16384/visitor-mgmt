@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, AlertCircle, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import api from '../api/client';
@@ -13,11 +13,6 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showDemoCredentials, setShowDemoCredentials] = useState(true);
-
-  // 2FA state
-  const [step, setStep] = useState('credentials'); // 'credentials' | '2fa'
-  const [partialToken, setPartialToken] = useState('');
-  const [totpCode, setTotpCode] = useState('');
 
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -33,32 +28,11 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      const res = await api.post('/auth/login', { email, password });
-      if (res.data.requires_2fa) {
-        setPartialToken(res.data.partial_token);
-        setStep('2fa');
-      } else {
-        await login(email, password);
-        navigate('/dashboard');
-      }
+      await login(email, password);
+      navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.error || t('login.error'));
     } finally {
-      setLoading(false);
-    }
-  };
-
-  const handle2FA = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      const res = await api.post('/auth/2fa/verify', { partial_token: partialToken, code: totpCode });
-      // Manually store token and set auth state
-      localStorage.setItem('token', res.data.token);
-      window.location.href = '/dashboard';
-    } catch (err) {
-      setError(err.response?.data?.error || 'Ungültiger Code');
       setLoading(false);
     }
   };
@@ -81,57 +55,7 @@ export default function Login() {
             <p className="kiosk-fade-up kiosk-delay-2 text-abat-hellgrau text-sm mt-1">{t('login.subtitle')}</p>
           </div>
 
-          {/* 2FA Step */}
-          {step === '2fa' ? (
-            <form onSubmit={handle2FA} className="px-8 py-8 space-y-5">
-              <div className="flex flex-col items-center text-center gap-2 pb-2">
-                <div className="w-14 h-14 rounded-full bg-abat-lichtblau/20 flex items-center justify-center mb-1">
-                  <ShieldCheck size={28} className="text-abat-blau" />
-                </div>
-                <h2 className="text-lg font-bold text-abat-dunkelgrau">Zwei-Faktor-Authentifizierung</h2>
-                <p className="text-sm text-abat-grau">Bitte geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein.</p>
-              </div>
-
-              {error && (
-                <div className="flex items-start gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
-                  <AlertCircle size={18} className="flex-shrink-0 mt-0.5" />
-                  <span>{error}</span>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-semibold text-abat-dunkelgrau mb-2">Authentifizierungs-Code</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={totpCode}
-                  onChange={e => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  className="w-full px-4 py-4 border-2 border-abat-hellgrau rounded-xl focus:outline-none focus:border-abat-blau text-2xl font-mono tracking-[0.4em] text-center transition-all"
-                  placeholder="000000"
-                  autoFocus
-                  required
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading || totpCode.length !== 6}
-                className="w-full bg-abat-blau hover:bg-primary-600 disabled:opacity-50 text-white font-semibold py-3 px-4 rounded-xl transition-colors shadow-md text-sm active:scale-[0.98]">
-                {loading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Wird geprüft…
-                  </span>
-                ) : 'Bestätigen'}
-              </button>
-              <button type="button" onClick={() => { setStep('credentials'); setError(''); setTotpCode(''); }}
-                className="w-full text-sm text-abat-grau hover:text-abat-dunkelgrau transition-colors py-1">
-                ← Zurück zur Anmeldung
-              </button>
-            </form>
-          ) : (
-
-          /* Form */
+          {/* Form */}
           <form onSubmit={handleSubmit} className="px-8 py-8 space-y-5">
             {error && (
               <div className="kiosk-fade-up flex items-start gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
@@ -199,7 +123,6 @@ export default function Login() {
               </div>
             )}
           </form>
-          )}
         </div>
 
         <p className="kiosk-fade-up kiosk-delay-5 text-center text-abat-hellgrau text-xs mt-6">

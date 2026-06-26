@@ -7,7 +7,6 @@ const { requireRole } = require('../middleware/auth');
 const { generateBadge } = require('../services/badge');
 const { generateQR } = require('../services/qrcode');
 const { sendHostNotification, sendVisitorConfirmation } = require('../services/email');
-const { printBadge, testPrinterConnection } = require('../services/label-printer');
 const { log } = require('../services/audit-log');
 
 const router = express.Router();
@@ -313,52 +312,6 @@ router.get('/:id/badge/:visitId', authenticate, async (req, res) => {
     'Content-Disposition': `attachment; filename="badge-${visitor.last_name}-${visit.badge_number}.pdf"`,
   });
   res.send(pdf);
-});
-
-// POST /:id/print-badge/:visitId
-router.post('/:id/print-badge/:visitId', authenticate, async (req, res) => {
-  const visitor = db.prepare('SELECT * FROM visitors WHERE id = ?').get(req.params.id);
-  const visit   = db.prepare('SELECT * FROM visits WHERE id = ? AND visitor_id = ?').get(req.params.visitId, req.params.id);
-  if (!visitor || !visit) return res.status(404).json({ error: 'Nicht gefunden' });
-
-  const printerIpSetting  = db.prepare("SELECT value FROM system_settings WHERE key = 'printer_ip'").get();
-  const printerPortSetting = db.prepare("SELECT value FROM system_settings WHERE key = 'printer_port'").get();
-  const printerEnabled    = db.prepare("SELECT value FROM system_settings WHERE key = 'printer_enabled'").get();
-
-  if (printerEnabled?.value !== 'true') return res.status(400).json({ error: 'Drucker ist deaktiviert' });
-  if (!printerIpSetting?.value)         return res.status(400).json({ error: 'Drucker-IP nicht konfiguriert' });
-
-  const host = visit.host_id ? db.prepare('SELECT * FROM hosts WHERE id = ?').get(visit.host_id) : null;
-  const checkinDate = new Date(visit.checked_in_at);
-
-  try {
-    await printBadge({
-      printerIp:   printerIpSetting.value,
-      printerPort: parseInt(printerPortSetting?.value || '9100'),
-      visitorName: `${visitor.first_name} ${visitor.last_name}`,
-      company:     visitor.company || '',
-      hostName:    host ? host.name : '',
-      date:        checkinDate.toLocaleDateString('de-DE'),
-      time:        checkinDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
-      badgeNumber: visit.badge_number,
-    });
-    res.json({ message: 'Badge gedruckt' });
-  } catch (err) {
-    res.status(502).json({ error: `Druckfehler: ${err.message}` });
-  }
-});
-
-// POST /printer-test
-router.post('/printer-test', authenticate, async (req, res) => {
-  const printerIpSetting  = db.prepare("SELECT value FROM system_settings WHERE key = 'printer_ip'").get();
-  const printerPortSetting = db.prepare("SELECT value FROM system_settings WHERE key = 'printer_port'").get();
-  if (!printerIpSetting?.value) return res.status(400).json({ error: 'Drucker-IP nicht konfiguriert' });
-  try {
-    await testPrinterConnection(printerIpSetting.value, parseInt(printerPortSetting?.value || '9100'));
-    res.json({ message: 'Verbindung erfolgreich' });
-  } catch (err) {
-    res.status(502).json({ error: `Verbindung fehlgeschlagen: ${err.message}` });
-  }
 });
 
 module.exports = router;

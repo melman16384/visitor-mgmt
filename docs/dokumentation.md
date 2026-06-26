@@ -1,6 +1,6 @@
 # Besucherverwaltungssystem — Projektdokumentation
 
-> Erstellt: 15. Juni 2026 | Zuletzt aktualisiert: 17. Juni 2026 (Rev. 3)  
+> Erstellt: 15. Juni 2026 | Zuletzt aktualisiert: 26. Juni 2026 (Rev. 4)  
 > Kunde: **abat AG**  
 > Domain: https://visitor.luwilab.work  
 > Server: /opt/visitor-mgmt
@@ -22,8 +22,7 @@
 11. [Dokumenten-Upload & Unterschrift](#11-dokumenten-upload--unterschrift)
 12. [Zugangsdaten & Benutzerrollen](#12-zugangsdaten--benutzerrollen)
 13. [Standortbasierte Zugriffskontrolle](#13-standortbasierte-zugriffskontrolle)
-14. [Badge-Drucker (Brother QL-820NWB)](#14-badge-drucker-brother-ql-820nwb)
-15. [E-Mail-System](#15-e-mail-system)
+14. [E-Mail-System](#14-e-mail-system)
 16. [Auto-Checkout](#16-auto-checkout)
 17. [Host-Portal](#17-host-portal)
 18. [Audit-Log & Compliance](#18-audit-log--compliance)
@@ -40,7 +39,7 @@
 
 ## 1. Projektübersicht
 
-Ein vollständiges, webbasiertes Besucherverwaltungssystem für Unternehmen. Besucher können am Empfang oder per Kiosk-Modus ein- und ausgecheckt werden. Das System unterstützt Vorregistrierungen, Badge-Druck (PDF + Etikettendrucker), Evakuierungslisten, Berichte, standortbasierte Zugriffskontrolle, ein Gastgeber-Portal sowie ein Audit-Log für Compliance-Anforderungen.
+Ein vollständiges, webbasiertes Besucherverwaltungssystem für Unternehmen. Besucher können am Empfang oder per Kiosk-Modus ein- und ausgecheckt werden. Das System unterstützt Vorregistrierungen, PDF-Badge-Generierung, Evakuierungslisten, Berichte, standortbasierte Zugriffskontrolle, ein mobiloptimiertes Gastgeber-Portal sowie ein Audit-Log für Compliance-Anforderungen.
 
 ### Features im Überblick
 
@@ -50,7 +49,7 @@ Ein vollständiges, webbasiertes Besucherverwaltungssystem für Unternehmen. Bes
 | Vorregistrierung | Gastgeber kann Besucher voranmelden, QR-Code per E-Mail; Gruppenregistrierung |
 | QR-Code Vorregistrierung | Server-seitig generiert (kein externer Dienst), Anzeige im Admin-Modal |
 | Badge-Generierung | A6-PDF (Landscape) mit Name, Firma, Gastgeber, QR-Code |
-| Badge-Drucker | Brother QL-820NWB über IP (RAW TCP Port 9100), DK-11202 (62×100 mm) |
+| Badge-Generierung | A6-PDF (Landscape) mit Name, Firma, Gastgeber, QR-Code — downloadbar |
 | abat-ID | Permanente Besucher-ID im Format `ABAT-########`; in E-Mail + Kiosk-Erfolgsscreen |
 | Kiosk-Modus | 2 Optionen: Einchecken, Auschecken — kein Login nötig |
 | Kiosk Check-in Flow | Mehrstufig: QR-Scan oder abat-ID → Daten bestätigen → Datenschutz unterschreiben → Erfolg |
@@ -68,7 +67,8 @@ Ein vollständiges, webbasiertes Besucherverwaltungssystem für Unternehmen. Bes
 | Besuchsgrundauswahl | Konfigurierbare Besuchszwecke im Admin |
 | Auto-Checkout | Automatisches Auschecken aller aktiven Besucher täglich um 19:00 Uhr (konfigurierbar) |
 | Vorregistrierungs-Ablauf | Abgelaufene Vorregistrierungen werden täglich um 00:05 Uhr automatisch auf `expired` gesetzt |
-| Host-Portal | Gastgeber können sich separat einloggen; Ansicht: Angekündigt / Anwesend / Vergangen; eigenes Passwort ändern |
+| Host-Portal | Gastgeber können sich separat einloggen; mobiloptimiert (Karten + Bottom-Navigation); Ansicht: Angekündigt / Anwesend / Vergangen; eigenes Passwort ändern |
+| **Schnell-Check-in** | Empfang checkt bekannte/vorregistrierte Besucher mit 1–2 Klicks ein — Name tippen → auswählen → fertig |
 | Audit-Log | 90 Tage Aufbewahrung, Tagesprotokoll-Download, Compliance-Bericht als CSV |
 | Superadmin-Löschrechte | Besucher und Vorregistrierungen dauerhaft aus der Datenbank entfernen |
 | Rollenverwaltung | superadmin / admin / receptionist / host |
@@ -76,7 +76,8 @@ Ein vollständiges, webbasiertes Besucherverwaltungssystem für Unternehmen. Bes
 | abat AG CI | Logo, Mulish-Schrift, Markenfarben durchgängig |
 | Automatisches DB-Backup | Tägliches SQLite-Backup um 03:00 Uhr via systemd Timer; 30 Tage Aufbewahrung |
 | Besuchszweck-Sortierung | Reihenfolge per Drag & Drop im Admin anpassbar |
-| **Mehrsprachigkeit (i18n)** | Admin-, Empfangs- und Gastgeber-Panel in DE / EN / LT / RU; Sprachumschalter in der Sidebar; Kiosk hat eigenes i18n-System (DE/EN) |
+| **Mehrsprachigkeit (i18n)** | Admin-Panel in DE / EN; Sprachumschalter in der Sidebar; Kiosk hat eigenes i18n-System (DE/EN) |
+| Microsoft SSO | Optional via `.env` aktivierbar (`MS_SSO_ENABLED=true` + Client-ID/Secret/Tenant-ID) |
 
 ---
 
@@ -124,19 +125,15 @@ Nginx (Reverse Proxy)
 Node.js Backend (Port 3001)
    ├── better-sqlite3 → /opt/visitor-mgmt/backend/data/visitors.db
    └── Logs           → /opt/visitor-mgmt/logs/audit-YYYY-MM-DD.log
-
-Brother QL-820NWB (Etikettendrucker)
-   └── RAW TCP Port 9100 (im lokalen Netzwerk erreichbar)
 ```
 
 **Tech Stack:**
 - **Frontend:** React 19 + Vite 8 + Tailwind CSS 4 + Mulish Font + react-i18next (i18n)
 - **Backend:** Node.js (≥ 20, getestet auf 24) + Express.js 5
 - **Datenbank:** SQLite (better-sqlite3 12, WAL-Modus)
-- **Auth:** JWT (JSON Web Tokens) — Admin-Token: 8h, Host-Token: 12h; optionales TOTP-2FA pro Benutzer
+- **Auth:** JWT (JSON Web Tokens) — Admin-Token: 8h, Host-Token: 12h
 - **Sicherheit:** helmet (HTTP-Header), express-rate-limit (Brute-Force-Schutz), bcryptjs (cost 12)
 - **PDF:** PDFKit (Badge-Generierung A6 Landscape)
-- **Etikettendruck:** canvas + net.Socket (Brother QL Raster Protocol)
 - **QR-Codes:** qrcode (Generierung) + html5-qrcode (Kamera-Scanner)
 - **Unterschrift:** signature_pad (Canvas-basiert)
 - **Datei-Upload:** multer 2 (Fotos + Dokumente)
@@ -187,7 +184,6 @@ Brother QL-820NWB (Etikettendrucker)
 │   │   │   ├── auto-checkout.js     # Täglicher Auto-Checkout per setTimeout
 │   │   │   ├── badge.js             # PDF-Badge Generierung (PDFKit, A6 Landscape)
 │   │   │   ├── email.js             # Nodemailer: alle ausgehenden Mails
-│   │   │   ├── label-printer.js     # Brother QL-820NWB RAW TCP Etikettendruck
 │   │   │   ├── prereg-expiry.js     # Tägliche Markierung abgelaufener Vorregistrierungen
 │   │   │   └── qrcode.js            # QR-Code als Buffer oder DataURL
 │   │   └── index.js                 # Express App, Port 3001
@@ -208,18 +204,16 @@ Brother QL-820NWB (Etikettendrucker)
 │   │   ├── api/client.js            # Axios-Instanz, 401-Redirect (kiosk-aware)
 │   │   ├── components/
 │   │   │   ├── Layout.jsx
-│   │   │   ├── Sidebar.jsx          # Navigation + LangSwitcher (Sprachumschalter DE/EN/LT/RU)
+│   │   │   ├── Sidebar.jsx          # Navigation + LangSwitcher (Sprachumschalter DE/EN)
 │   │   │   ├── Modal.jsx
 │   │   │   ├── QRScanner.jsx
 │   │   │   ├── KioskHeader.jsx      # Wiederverwendbarer Kiosk-Header (Zurück, Logo, Sprachumschalter)
 │   │   │   ├── SignaturePad.jsx
 │   │   │   └── DocumentSigning.jsx
 │   │   ├── i18n/
-│   │   │   ├── index.js             # i18next-Initialisierung (Sprachen registrieren, localStorage-Persistenz)
+│   │   │   ├── index.js             # i18next-Initialisierung (DE/EN, localStorage-Persistenz)
 │   │   │   ├── de.js                # Deutsch (Referenz-Datei)
-│   │   │   ├── en.js                # Englisch
-│   │   │   ├── lt.js                # Litauisch
-│   │   │   └── ru.js                # Russisch
+│   │   │   └── en.js                # Englisch
 │   │   ├── context/
 │   │   │   ├── AuthContext.jsx
 │   │   │   └── KioskLangContext.jsx  # DE/EN Übersetzungen für Kiosk (separat von Admin-i18n)
@@ -362,9 +356,6 @@ Standardwerte: Besprechung, Lieferung, Interview, Wartung, Sonstiges
 |---|---|---|
 | `gdpr_retention_days` | `365` | Tage bis zur Anonymisierung |
 | `visitor_email_confirmation` | `true` | Check-in-Bestätigung an Besucher |
-| `printer_enabled` | `false` | Etikettendrucker aktiv |
-| `printer_ip` | `` | IP-Adresse des Brother QL-820NWB |
-| `printer_port` | `9100` | TCP-Port des Druckers |
 | `smtp_security` | `starttls` | SMTP-Verschlüsselung: `starttls` / `ssl` / `none` |
 | `privacy_policy_text` | *(Platzhaltertext)* | Datenschutztext — im Kiosk angezeigt |
 | `privacy_policy_enabled` | `true` | Datenschutz-Unterschrift im Kiosk aktivieren |
@@ -419,8 +410,6 @@ Standardwerte: Besprechung, Lieferung, Interview, Wartung, Sonstiges
 | DELETE | `/visitors/:id` | Ja (superadmin) | Dauerhaft löschen (inkl. Besuche + Dokumente) |
 | POST | `/visitors/:id/checkin` | Ja | Erneut einchecken |
 | GET | `/visitors/:id/badge/:visitId` | Ja | Badge als PDF |
-| POST | `/visitors/:id/print-badge/:visitId` | Ja | Badge an Etikettendrucker senden |
-| POST | `/visitors/printer-test` | Ja | TCP-Verbindung zum Drucker testen |
 
 ### Besuche (Check-out)
 
@@ -563,7 +552,6 @@ Standardwerte: Besprechung, Lieferung, Interview, Wartung, Sonstiges
 | Besuchszwecke | CRUD Besuchszwecke | admin+ |
 | Benutzer | CRUD Benutzer + Standortzuweisung | superadmin |
 | Auto-Checkout | Aktivieren/Deaktivieren + Uhrzeit einstellen | superadmin |
-| Etikettendrucker | IP, Port, Aktivierung, Verbindungstest | admin+ |
 | Datenschutz | GDPR Aufbewahrungsdauer, Bereinigung, E-Mail-Bestätigung | admin+ |
 | E-Mail | SMTP-Konfiguration (read-only), Verschlüsselung, Test-E-Mail | admin+ |
 | Passwort ändern | Eigenes Passwort ändern | alle |
@@ -635,7 +623,7 @@ Formularfelder: Vorname *, Nachname *, Gastgeber *, Unternehmen, Besuchszweck, N
 
 ## 9. Mehrsprachigkeit (i18n)
 
-Das Admin-, Empfangs- und Gastgeber-Panel unterstützt vier Sprachen. Der Kiosk hat ein separates, unabhängiges i18n-System (DE/EN via `KioskLangContext`).
+Das Admin-, Empfangs- und Gastgeber-Panel unterstützt Deutsch und Englisch. Der Kiosk hat ein separates, unabhängiges i18n-System (DE/EN via `KioskLangContext`).
 
 ### Unterstützte Sprachen
 
@@ -643,16 +631,14 @@ Das Admin-, Empfangs- und Gastgeber-Panel unterstützt vier Sprachen. Der Kiosk 
 |---|---|---|
 | `de` | Deutsch | 🇩🇪 (Standard) |
 | `en` | English | 🇬🇧 |
-| `lt` | Lietuvių | 🇱🇹 |
-| `ru` | Русский | 🇷🇺 |
 
 ### Technische Umsetzung
 
 - **Bibliothek:** `react-i18next` + `i18next`
 - **Initialisierung:** `frontend/src/i18n/index.js` (wird in `main.jsx` importiert)
-- **Sprachdateien:** `frontend/src/i18n/de.js`, `en.js`, `lt.js`, `ru.js`
+- **Sprachdateien:** `frontend/src/i18n/de.js`, `en.js`
 - **Namespace:** Einzelner Namespace `translation` — ein Objekt pro Sprache, strukturiert nach Sektionen
-- **Persistenz:** Gewählte Sprache wird in `localStorage` unter dem Key `admin_lang` gespeichert; Standard: `de`
+- **Persistenz:** Gewählte Sprache wird in `localStorage` unter dem Key `admin_lang` gespeichert; gespeicherte Werte außer `de`/`en` fallen auf `de` zurück
 - **Hook:** `const { t } = useTranslation()` in jedem übersetzten Komponent
 - **Sprachumschalter:** `LangSwitcher`-Komponente in der Sidebar (Globe-Icon + Dropdown mit Flaggen)
 
@@ -685,16 +671,14 @@ Der Kiosk (`KioskLangContext.jsx`) hat ein eigenes, unabhängiges Übersetzungss
 
 ```
 frontend/src/i18n/
-├── index.js   ← i18next-Konfiguration (hier neue Sprache registrieren)
+├── index.js   ← i18next-Konfiguration (Sprachen registrieren, localStorage-Fallback)
 ├── de.js      ← Deutsch (Referenz-Datei)
-├── en.js      ← Englisch
-├── lt.js      ← Litauisch
-└── ru.js      ← Russisch
+└── en.js      ← Englisch
 ```
 
 Um eine neue Sprache hinzuzufügen:
 1. Neue Datei `xy.js` anlegen (Kopie von `de.js`, Inhalte übersetzen)
-2. In `index.js` importieren und als `xy: { translation: xy }` registrieren
+2. In `index.js` importieren und als `xy: { translation: xy }` registrieren; erlaubte Codes im Fallback-Array ergänzen
 3. In `Sidebar.jsx` das `LANGUAGES`-Array um `{ code: 'xy', label: '...', flag: '🏳️' }` erweitern
 
 ---
@@ -772,21 +756,25 @@ Benutzer können auf bestimmte Standorte beschränkt werden.
 
 ---
 
-## 13. Badge-Drucker (Brother QL-820NWB)
+## 13. Schnell-Check-in am Empfang
 
-| Eigenschaft | Wert |
+Das Check-in-Modal im Dashboard hat zwei Tabs:
+
+| Tab | Beschreibung |
 |---|---|
-| Modell | Brother QL-820NWB |
-| Verbindung | Netzwerk (RAW TCP) |
-| Port | 9100 (konfigurierbar) |
-| Etikett | DK-11202 (62 × 100 mm) |
-| Auflösung | 300 dpi → 696 × 1109 Pixel |
+| **Schnell-Check-in** | Zeigt automatisch alle heutigen Vorregistrierungen; alternativ Name/Firma eingeben → bekannte Besucher erscheinen sofort |
+| **Neuer Besucher** | Vollständiges Formular für Erstbesucher ohne Vorregistrierung |
 
-**Konfiguration:** Einstellungen → Etikettendrucker → IP, Port, Aktivierung, Verbindungstest.
+### Ablauf Schnell-Check-in
 
-**Label-Inhalt:** abat-Logo, Besuchername, Unternehmen, Gastgeber, Badge-Nr., Datum & Uhrzeit.
+1. Empfang öffnet Dashboard → "Check-in"
+2. Heutige Vorregistrierungen erscheinen sofort → ein Klick
+3. Mini-Formular: nur Host + Zweck auswählen (vorausgefüllt aus Vorregistrierung)
+4. "Jetzt einchecken" → fertig
 
-**PDF-Badge (A6 Landscape):** Alternativ als PDF downloadbar — blauer Header, QR-Code, Besuchsinfos.
+Für bekannte Besucher ohne Vorregistrierung: Name tippen (ab 2 Zeichen Live-Suche) → Besucher auswählen → gleicher Mini-Formular-Flow.
+
+**Backend:** Bekannte Besucher nutzen `POST /visitors/:id/checkin`. Erstbesucher aus Vorregistrierungen werden automatisch in der Datenbank angelegt (`POST /visitors`).
 
 ---
 
@@ -872,6 +860,8 @@ Gastgeber erhalten Zugang zu einem separaten Portal unter `/host/login`, ohne da
 | Vorregistrierung erstellen | Einzelregistrierung; host_id wird automatisch auf den eingeloggten Gastgeber gesetzt |
 | Passwort ändern | Gastgeber kann sein Portal-Passwort selbst ändern (aktuelles Passwort erforderlich) |
 
+**Mobile Optimierung:** Das Portal ist vollständig responsiv. Auf Smartphones erscheinen Besucherlisten als Karten statt Tabellen und die Navigation läuft über eine fixe Bottom-Navigation. Formulare sind einspalt auf Mobile, zweispaltig auf Desktop.
+
 ### Technische Umsetzung
 
 - **Separates JWT:** `{ type: 'host', hostId }` — verhindert Privilege-Escalation zwischen Admin- und Host-Token
@@ -879,6 +869,7 @@ Gastgeber erhalten Zugang zu einem separaten Portal unter `/host/login`, ohne da
 - **Gespeichert:** `host_token` in `localStorage`
 - **Middleware:** `authenticateHost()` in `routes/host-portal.js` prüft `type === 'host'`
 - **Link im Admin-Header:** Neben "Kiosk öffnen" — öffnet `/host` in neuem Tab
+- **Responsive:** Cards (`sm:hidden`) + Tabellen (`hidden sm:block`) + Bottom-Nav (`sm:hidden fixed bottom-0`)
 
 ### Portal-Passwort einrichten
 
@@ -1073,6 +1064,12 @@ SMTP_PASS=<smtp-passwort>
 SMTP_SECURITY=starttls
 FROM_EMAIL=<absender@firma.de>
 COMPANY_NAME=<firmenname>
+
+# Microsoft SSO (optional — nur wenn SSO genutzt werden soll)
+MS_SSO_ENABLED=false
+MS_CLIENT_ID=
+MS_CLIENT_SECRET=
+MS_TENANT_ID=
 ```
 
 | Variable | Pflicht | Beschreibung |
@@ -1089,6 +1086,12 @@ COMPANY_NAME=<firmenname>
 | `SMTP_SECURITY` | Nein | `starttls` / `ssl` / `none` (DB-Wert hat Vorrang) |
 | `FROM_EMAIL` | Nein | Absender-Adresse |
 | `COMPANY_NAME` | Nein | Firmenname (in Mails und Badge) |
+| `MS_SSO_ENABLED` | Nein | `true` aktiviert den "Mit Microsoft anmelden"-Button im Host-Portal |
+| `MS_CLIENT_ID` | Nein | Azure App-Registrierung: Application (client) ID |
+| `MS_CLIENT_SECRET` | Nein | Azure App-Registrierung: Client Secret |
+| `MS_TENANT_ID` | Nein | Azure Directory (tenant) ID |
+
+> **Hinweis MS SSO:** Nach Änderung der `MS_SSO_*`-Variablen muss der Backend-Prozess neu gestartet werden: `pm2 restart visitor-mgmt --update-env`
 
 ---
 
@@ -1171,13 +1174,6 @@ cd /opt/visitor-mgmt/frontend && npm run build
 
 Anschließend Hard-Reload im Browser: `Ctrl+Shift+R`.
 
-### Etikettendrucker antwortet nicht
-
-1. `ping <Drucker-IP>`
-2. `nc -zv <Drucker-IP> 9100`
-3. "Verbindung testen" in Einstellungen → Etikettendrucker
-4. Drucker-IP und Port im Admin prüfen
-
 ### E-Mail wird nicht gesendet
 
 1. SMTP-Test unter **Einstellungen → E-Mail → Test-E-Mail senden**
@@ -1232,7 +1228,6 @@ Diese Verbindungen werden **nur während der Installation** benötigt und könne
 | Zweck | Host / Domain | Port | Protokoll | Konfigurierbar? |
 |---|---|---|---|---|
 | SMTP (ausgehende E-Mail) | euer SMTP-Server (z.B. `smtp.firma.de`) | 465 oder 587 | SMTP+SSL/STARTTLS | Ja, in `.env` / Einstellungen |
-| Etikettendrucker (Brother QL-820NWB) | Drucker-IP im LAN | 9100 | RAW TCP | Ja, in Einstellungen → Drucker |
 
 ### Nicht vorhanden / kein Bedarf
 
@@ -1254,7 +1249,6 @@ github.com:443
 
 # Dauerhaft (Laufzeit) — nur intern/konfiguriert:
 <SMTP-Server>:465 oder 587     # E-Mail-Versand
-<Drucker-IP>:9100              # Etikettendrucker (optional, LAN)
 ```
 
 Eingehend benötigt der Server nur HTTPS (443) von Cloudflare und ggf. SSH (22) für Administration.

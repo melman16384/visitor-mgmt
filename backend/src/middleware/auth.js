@@ -9,7 +9,7 @@ function authenticate(req, res, next) {
   const token = authHeader.slice(7);
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET || 'secret');
-    const user = db.prepare('SELECT id, name, email, role, totp_enabled FROM users WHERE id = ? AND active = 1').get(payload.userId);
+    const user = db.prepare('SELECT id, name, email, role FROM users WHERE id = ? AND active = 1').get(payload.userId);
     if (!user) return res.status(401).json({ error: 'Benutzer nicht gefunden' });
     const locationRows = db.prepare('SELECT location_id FROM user_locations WHERE user_id = ?').all(user.id);
     user.location_ids = locationRows.map(r => r.location_id);
