@@ -936,9 +936,20 @@ Betrifft: `POST /auth/login` und `POST /host-portal/login`.
 
 | Pfad | Zugriffsschutz |
 |---|---|
-| `/uploads/photos/` | Öffentlich (Admin-UI benötigt direkten Zugriff) |
+| `/uploads/photos/` | Erfordert Admin-JWT |
 | `/uploads/documents/` | Erfordert Admin-JWT |
 | `/uploads/signatures/` | Erfordert Admin-JWT |
+
+> Vormals war `/uploads/photos/` ohne Auth-Middleware über `express.static` erreichbar (Kommentar im Code: „photos public, used in admin UI"). Das Feature war jedoch nie tatsächlich angebunden (Verzeichnis leer, keine Frontend-Referenzen) — trotzdem wurde die Lücke im Rahmen der Sicherheits-Härtung geschlossen. Alle drei Upload-Pfade verlangen nun einheitlich Authentifizierung.
+
+### Validierung von Dokumenten-Uploads
+
+Beim Hochladen von Dokumenten (z.B. NDA) in `backend/src/routes/documents.js` reicht eine passende Dateiendung (`.pdf`, `.doc`, `.docx`) allein nicht mehr aus:
+
+- Nach dem Upload wird zusätzlich die **Datei-Signatur (Magic Bytes)** geprüft (z.B. muss eine echte PDF-Datei mit `%PDF-` beginnen).
+- Stimmt der tatsächliche Dateiinhalt nicht mit der behaupteten Endung überein, wird die Datei gelöscht und die Anfrage mit `400` abgelehnt.
+
+Damit lässt sich beliebiger Dateiinhalt nicht mehr als vermeintliches Dokument einschleusen.
 
 ### Passwörter
 
@@ -951,10 +962,58 @@ Betrifft: `POST /auth/login` und `POST /host-portal/login`.
 - 128-Byte kryptografisch zufälliger Secret (generiert mit `crypto.randomBytes(64).toString('hex')`)
 - Gespeichert in `/opt/visitor-mgmt/backend/.env`
 - Bei Änderung des Secrets werden alle aktiven Sessions invalidiert
+- Kein unsicherer Fallback: `backend/src/routes/auth.js` und `backend/src/routes/host-portal.js` enthielten früher `process.env.JWT_SECRET || 'secret'` — einen fest codierten, erratbaren Fallback-Wert, falls die Umgebungsvariable einmal nicht gesetzt war. Beide Routen brechen beim Start jetzt stattdessen mit einem Fehler ab, wenn `JWT_SECRET` fehlt, statt still auf einen unsicheren Wert zurückzufallen.
+- Im Rahmen der Sicherheits-Härtung wurde das Secret rotiert (neuer zufälliger 128-Zeichen-Hex-Wert) — dadurch wurden alle zuvor ausgestellten Sessions/JWTs ungültig.
 
 ### Datenbankabfragen
 
 Alle Datenbankabfragen verwenden parametrisierte Prepared Statements (better-sqlite3) — keine SQL-Injection möglich.
+
+### Netzwerk & Firewall (Host-Ebene)
+
+Auf dem Produktivserver ist **UFW** aktiv mit Default-Deny für eingehenden Traffic. Nur folgende Ports sind von außen erreichbar:
+
+| Port | Dienst |
+|---|---|
+| 22 | SSH |
+| 80 | HTTP (Nginx, Redirect auf HTTPS) |
+| 443 | HTTPS (Nginx) |
+
+Port `3001` (Node-Backend) ist **nicht** mehr direkt aus dem Internet erreichbar — nur noch über den Nginx-Reverse-Proxy. Zusätzlich (Defense in Depth) bindet der Express-Server in `backend/src/index.js` nur noch an `127.0.0.1` statt an `0.0.0.0`.
+
+**SSH:** `X11Forwarding` ist serverweit deaktiviert. **fail2ban** ist serverweit installiert und aktiv (u.a. `sshd`-Jail) und schützt SSH gegen Brute-Force-Angriffe.
+
+### Prozess-Isolation (Least Privilege)
+
+Der pm2-Prozess `visitor-mgmt` läuft **nicht mehr als root**. Ein dedizierter, unprivilegierter Systembenutzer `svc-visitormgmt` wurde angelegt:
+
+- Das gesamte Verzeichnis `/opt/visitor-mgmt` gehört `svc-visitormgmt`
+- In `/opt/ecosystem.config.js` ist für den Eintrag von visitor-mgmt `uid: 'svc-visitormgmt'` und `gid: 'svc-visitormgmt'` gesetzt
+
+### Dateiberechtigungen
+
+| Pfad | Berechtigung | Eigentümer |
+|---|---|---|
+| `backend/.env` | `600` (vormals `644`, weltlesbar) | `svc-visitormgmt` |
+| `backend/data/*.db`, `backups/*.db` | `640` | `svc-visitormgmt` |
+| `logs/*.log` | `640` | `svc-visitormgmt` |
+
+> Log- und DB-Dateien enthalten Klartext (Besuchernamen, Admin-E-Mails) und sind daher nicht mehr gruppen-/weltlesbar für andere Systembenutzer.
+
+### Nginx-Härtung
+
+Site-Konfiguration (`/etc/nginx/sites-available/visitor.luwilab.work`) und globale Konfiguration (`/etc/nginx/nginx.conf`):
+
+- `ssl_protocols` global auf **TLSv1.2 und TLSv1.3** beschränkt (zuvor erlaubte die globale Konfiguration zusätzlich die veralteten Protokolle TLSv1/1.1)
+- `server_tokens off` (global) — Nginx-Version wird nicht mehr in Response-Headern preisgegeben
+- **Rate-Limiting auf Nginx-Ebene** (zusätzlich zum App-seitigen Rate-Limiting oben):
+  - Zone `login_limit`: max. 5 Requests/Minute pro IP auf `/api/auth/`
+  - Zone `api_limit`: max. 60 Requests/Minute pro IP auf den übrigen `/api/`-Pfaden
+- `location ~ /\.git { deny all; }` als zusätzliche Absicherung
+
+### Backups
+
+`backup.sh` war schon zuvor logisch korrekt (Pfade stimmten), lief aber auf dem Server durch keinen Cron-Job/Timer — die Backups waren dadurch veraltet (16+ Tage alt). Es wurde ein Cron-Eintrag unter `/etc/cron.d/visitor-mgmt-backups` eingerichtet, der das Skript täglich um 02:00 Uhr als Benutzer `svc-visitormgmt` ausführt und nach `logs/backup.log` protokolliert. Details und Prüfbefehl siehe [Installationsanleitung → Datenbank-Backup](installation.md#datenbank-backup).
 
 ---
 

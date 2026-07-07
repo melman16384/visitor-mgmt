@@ -152,7 +152,7 @@ function authenticateHost(req, res, next) {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Nicht autorisiert' });
   try {
-    const payload = jwt.verify(header.slice(7), process.env.JWT_SECRET || 'secret');
+    const payload = jwt.verify(header.slice(7), process.env.JWT_SECRET);
     if (payload.type !== 'host') return res.status(403).json({ error: 'Kein Host-Token' });
     const host = db.prepare('SELECT * FROM hosts WHERE id = ? AND active = 1').get(payload.hostId);
     if (!host) return res.status(401).json({ error: 'Gastgeber nicht gefunden' });

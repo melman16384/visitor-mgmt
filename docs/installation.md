@@ -231,6 +231,13 @@ certbot --nginx -d deine-domain.de
 
 Das Produktivsystem verwaltet das Backend mit **pm2** (Prozessname `visitor-mgmt`).
 
+> **Sicherheit — kein root-Prozess:** Im Rahmen der Sicherheits-Härtung läuft der Prozess **nicht mehr
+> als root**. Ein dedizierter, unprivilegierter Systembenutzer `svc-visitormgmt` wurde angelegt,
+> `/opt/visitor-mgmt` gehört diesem Benutzer, und in `/opt/ecosystem.config.js` sind `uid` und `gid`
+> auf `svc-visitormgmt` gesetzt. Zusätzlich bindet das Backend (`backend/src/index.js`) nur noch an
+> `127.0.0.1` statt an `0.0.0.0` — von außen ist Port 3001 ohnehin nur über den Nginx-Reverse-Proxy und
+> nicht direkt aus dem Internet erreichbar (siehe [Sicherheit → Netzwerk & Firewall](dokumentation.md#18-sicherheit)).
+
 ```bash
 # pm2 global installieren (falls noch nicht vorhanden)
 npm install -g pm2
@@ -240,6 +247,9 @@ pm2 start src/index.js --name visitor-mgmt --cwd /opt/visitor-mgmt/backend
 pm2 save                  # Prozessliste persistieren
 pm2 startup               # einmalig: pm2 nach Reboot automatisch starten (Anweisung ausführen)
 ```
+
+> Produktiv wird der Prozess über `/opt/ecosystem.config.js` mit `uid`/`gid: 'svc-visitormgmt'`
+> gestartet (`pm2 start /opt/ecosystem.config.js`), nicht direkt als root per obigem Befehl.
 
 Alltagsbefehle:
 
@@ -361,15 +371,32 @@ pm2 restart visitor-mgmt
 
 ## Datenbank-Backup
 
+Manuelles Ad-hoc-Backup:
+
 ```bash
 sqlite3 /opt/visitor-mgmt/backend/data/visitors.db \
   ".backup /root/backup-$(date +%Y%m%d).db"
 ```
 
-Tägliches automatisches Backup per Cron:
+### Automatisches tägliches Backup (bereits eingerichtet)
+
+Im Rahmen der Sicherheits-Härtung wurde ein Cron-Eintrag unter `/etc/cron.d/visitor-mgmt-backups`
+angelegt, der `backup.sh` täglich um **02:00 Uhr** als Benutzer `svc-visitormgmt` ausführt und nach
+`logs/backup.log` protokolliert — das ist kein optionaler manueller Schritt mehr, sondern auf dem
+Produktivserver bereits aktiv.
+
+Prüfen/anpassen:
 
 ```bash
-crontab -e
-# Täglich um 03:00 Uhr
-0 3 * * * sqlite3 /opt/visitor-mgmt/backend/data/visitors.db ".backup /root/backups/visitors-$(date +\%Y\%m\%d).db"
+# Cron-Job anzeigen
+cat /etc/cron.d/visitor-mgmt-backups
+
+# Backup-Log prüfen
+tail -n 50 /opt/visitor-mgmt/logs/backup.log
+
+# Vorhandene Backups auflisten
+ls -la /opt/visitor-mgmt/backups/
 ```
+
+> Bei einer Neuinstallation auf einem anderen Server muss dieser Cron-Job manuell angelegt werden —
+> `backup.sh` selbst existiert im Repository, wird aber ohne Cron-Eintrag nie automatisch ausgeführt.

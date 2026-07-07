@@ -28,11 +28,34 @@ const uploadDoc = multer({
   },
 });
 
+const MAGIC_BYTES = {
+  '.pdf': [{ offset: 0, bytes: Buffer.from('%PDF-', 'ascii') }],
+  '.doc': [{ offset: 0, bytes: Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]) }],
+  '.docx': [{ offset: 0, bytes: Buffer.from([0x50, 0x4b, 0x03, 0x04]) }],
+};
+
+function hasValidMagicBytes(filePath, ext) {
+  const signatures = MAGIC_BYTES[ext];
+  if (!signatures) return false;
+  const maxLen = Math.max(...signatures.map((s) => s.offset + s.bytes.length));
+  const buf = Buffer.alloc(maxLen);
+  const fd = fs.openSync(filePath, 'r');
+  fs.readSync(fd, buf, 0, maxLen, 0);
+  fs.closeSync(fd);
+  return signatures.some((s) => buf.slice(s.offset, s.offset + s.bytes.length).equals(s.bytes));
+}
+
 // Upload a document for a visit (no auth for kiosk use)
 router.post('/visits/:visitId/documents', uploadDoc.single('document'), (req, res) => {
   const { visitId } = req.params;
   const { document_type = 'nda' } = req.body;
   if (!req.file) return res.status(400).json({ error: 'Keine Datei hochgeladen' });
+
+  const ext = path.extname(req.file.originalname).toLowerCase();
+  if (!hasValidMagicBytes(req.file.path, ext)) {
+    fs.unlinkSync(req.file.path);
+    return res.status(400).json({ error: 'Datei entspricht nicht dem angegebenen Dateityp' });
+  }
 
   const visit = db.prepare('SELECT id FROM visits WHERE id = ?').get(visitId);
   if (!visit) return res.status(404).json({ error: 'Besuch nicht gefunden' });

@@ -9,7 +9,10 @@ const router = express.Router();
 
 const MAX_ATTEMPTS = 5;
 const LOCK_MINUTES = 15;
-const JWT_SECRET = process.env.JWT_SECRET || 'secret';
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 const COMPANY = process.env.COMPANY_NAME || 'abat AG';
 
 function recordFailedLogin(table, id) {

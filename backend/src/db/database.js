@@ -209,12 +209,6 @@ if (!usersInfo.find(c => c.name === 'failed_login_attempts')) {
 if (!usersInfo.find(c => c.name === 'locked_until')) {
   db.exec('ALTER TABLE users ADD COLUMN locked_until DATETIME');
 }
-if (!usersInfo.find(c => c.name === 'totp_secret')) {
-  db.exec('ALTER TABLE users ADD COLUMN totp_secret TEXT');
-}
-if (!usersInfo.find(c => c.name === 'totp_enabled')) {
-  db.exec('ALTER TABLE users ADD COLUMN totp_enabled INTEGER DEFAULT 0');
-}
 
 // Create initial admin user from env if no users exist yet
 const userCount = db.prepare('SELECT COUNT(*) as c FROM users').get();

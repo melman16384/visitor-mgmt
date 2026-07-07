@@ -28,15 +28,9 @@ router.post('/:id/unlock', ...superadmin, (req, res) => {
   res.json({ message: 'Account entsperrt' });
 });
 
-// POST /:id/reset-2fa — superadmin resets 2FA for a user
-router.post('/:id/reset-2fa', ...superadmin, (req, res) => {
-  db.prepare('UPDATE users SET totp_secret = NULL, totp_enabled = 0 WHERE id = ?').run(req.params.id);
-  res.json({ message: '2FA zurückgesetzt' });
-});
-
 // GET /
 router.get('/', ...superadmin, (req, res) => {
-  const rows = db.prepare('SELECT id, name, email, role, active, created_at, failed_login_attempts, locked_until, totp_enabled FROM users ORDER BY name ASC').all();
+  const rows = db.prepare('SELECT id, name, email, role, active, created_at, failed_login_attempts, locked_until FROM users ORDER BY name ASC').all();
   const locMap = {};
   db.prepare('SELECT user_id, location_id FROM user_locations').all().forEach(r => {
     if (!locMap[r.user_id]) locMap[r.user_id] = [];

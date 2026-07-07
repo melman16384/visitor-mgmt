@@ -41,8 +41,8 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Protected uploads: photos public (used in admin UI), documents/signatures require auth
-app.use('/uploads/photos', express.static(path.join(uploadsDir, 'photos')));
+// Protected uploads: photos, documents, signatures all require auth
+app.use('/uploads/photos', authenticate, express.static(path.join(uploadsDir, 'photos')));
 app.use('/uploads/documents', authenticate, express.static(path.join(uploadsDir, 'documents')));
 app.use('/uploads/signatures', authenticate, express.static(path.join(uploadsDir, 'signatures')));
 
@@ -118,7 +118,7 @@ require('./db/database');
 auditCleanup();
 const { scheduleNext } = require('./services/auto-checkout');
 const { scheduleExpiry } = require('./services/prereg-expiry');
-app.listen(PORT, () => {
+app.listen(PORT, '127.0.0.1', () => {
   console.log(`✓ Besucherverwaltung Backend läuft auf Port ${PORT}`);
   console.log(`  API: http://localhost:${PORT}/api`);
   console.log(`  Umgebung: ${process.env.NODE_ENV || 'development'}`);
