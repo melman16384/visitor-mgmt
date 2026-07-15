@@ -55,9 +55,9 @@ Das Dashboard zeigt nach dem Login eine Übersicht des aktuellen Tages:
 | Gastgeber | ✅ | Aus Liste wählen oder „Manuell eingeben" für externe Gastgeber |
 | Besuchsgrund | — | Aus vordefinierten Gründen wählen |
 | Notizen | — | Interne Anmerkungen |
-| NDA unterzeichnet | — | Häkchen setzen falls Geheimhaltungsvereinbarung vorliegt |
+| Datenschutzerklärung unterschrieben | — | Häkchen setzen, sobald die Datenschutzerklärung unterschrieben wurde |
 
-4. Auf **Einchecken** klicken — dem Besucher wird automatisch eine Badge-Nummer zugewiesen
+4. Auf **Einchecken** klicken
 
 > Nach dem Check-in kann ein Besucherausweis über das Drucker-Symbol in der Besucherliste gedruckt werden.
 
@@ -162,7 +162,7 @@ Die Evakuierungsliste zeigt in Echtzeit alle aktuell im Gebäude anwesenden Pers
 
 Auf **Liste drucken** klicken — es öffnet sich ein neues Fenster mit einer sauberen Druckansicht:
 
-- Alle anwesenden Besucher mit Name, Unternehmen, Gastgeber, Badge-Nummer und Check-in-Uhrzeit
+- Alle anwesenden Besucher mit Name, Unternehmen, Gastgeber und Check-in-Uhrzeit
 - Abhaküfeld pro Person zur manuellen Kontrolle
 - Gegliedert nach Standort
 - Zeitstempel der Erstellung
@@ -175,12 +175,11 @@ Auf **Liste drucken** klicken — es öffnet sich ein neues Fenster mit einer sa
 
 Erreichbar über **Berichte** im linken Menü.
 
-Ermöglicht den Export von Besuchsdaten als CSV oder PDF für einen wählbaren Zeitraum.
+Ermöglicht den Export von Besuchsdaten als CSV für einen wählbaren Zeitraum (in Excel öffenbar). Der CSV-Export ist ausschließlich Admin-Konten vorbehalten — mit einem Empfangs-Konto ist nur die Tabellenansicht in der App sichtbar.
 
-Verwendung:
-1. Zeitraum (Von – Bis) auswählen
-2. Format wählen (CSV für Excel, PDF für Ausdruck)
-3. Auf **Exportieren** klicken — Datei wird automatisch heruntergeladen
+Verwendung (nur Admin):
+1. Zeitraum (Von – Bis) auswählen, optional Standort filtern
+2. Auf **CSV-Export** klicken — Datei wird automatisch heruntergeladen
 
 ---
 
@@ -196,7 +195,7 @@ Verwendung:
 
 ### Besucher hat Badge verloren
 
-→ In der Besucherliste (Tab **Aktiv**) den Besucher suchen → Badge-Nummer notieren und neuen Ausweis drucken.
+→ In der Besucherliste (Tab **Aktiv**) den Besucher suchen und den Ausweis über das Drucker-Symbol erneut als PDF drucken.
 
 ### Besucher vergisst auszuchecken
 

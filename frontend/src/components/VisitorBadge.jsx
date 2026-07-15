@@ -19,8 +19,6 @@ export default function VisitorBadge({ visitor, visit, host }) {
         <p className="text-sm font-medium text-gray-700">
           {format(checkinDate, 'dd.MM.yyyy HH:mm', { locale: de })} Uhr
         </p>
-        <p className="text-xs text-gray-400 mt-3 uppercase tracking-wide">Badge-Nr.</p>
-        <p className="text-lg font-bold text-primary-700">{visit?.badge_number || '–'}</p>
       </div>
       <div className="bg-gray-50 text-center py-2">
         <p className="text-xs text-gray-400">Bitte sichtbar tragen</p>

@@ -78,8 +78,8 @@ router.post('/documents/:docId/signature', express.raw({ type: 'image/png', limi
   const sigPath = path.join(sigsDir, sigFilename);
   fs.writeFileSync(sigPath, req.body);
 
-  db.prepare('UPDATE visit_documents SET signature_path = ?, signed_at = CURRENT_TIMESTAMP WHERE id = ?')
-    .run(sigFilename, docId);
+  db.prepare('UPDATE visit_documents SET signature_path = ?, signed_at = ? WHERE id = ?')
+    .run(sigFilename, new Date().toISOString(), docId);
 
   res.json({ success: true, signature: sigFilename });
 });
@@ -98,8 +98,8 @@ router.post('/documents/:docId/signature-base64', express.json({ limit: '5mb' })
   const sigPath = path.join(sigsDir, sigFilename);
   fs.writeFileSync(sigPath, Buffer.from(base64Data, 'base64'));
 
-  db.prepare('UPDATE visit_documents SET signature_path = ?, signed_at = CURRENT_TIMESTAMP WHERE id = ?')
-    .run(sigFilename, docId);
+  db.prepare('UPDATE visit_documents SET signature_path = ?, signed_at = ? WHERE id = ?')
+    .run(sigFilename, new Date().toISOString(), docId);
 
   res.json({ success: true, signature: sigFilename });
 });

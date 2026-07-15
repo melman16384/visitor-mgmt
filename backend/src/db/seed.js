@@ -23,7 +23,7 @@ const loc2 = insertLocation.run('Niederlassung München', 'Maximilianstraße 18'
 const insertUser = db.prepare(`INSERT INTO users (name, email, password_hash, role, location_id) VALUES (?, ?, ?, ?, ?)`);
 const adminHash = bcrypt.hashSync('Admin123!', 10);
 const recepHash = bcrypt.hashSync('Empfang123!', 10);
-insertUser.run('Administrator', 'admin@firma.de', adminHash, 'superadmin', loc1.lastInsertRowid);
+insertUser.run('Administrator', 'admin@firma.de', adminHash, 'admin', loc1.lastInsertRowid);
 insertUser.run('Maria Empfang', 'empfang@firma.de', recepHash, 'receptionist', loc1.lastInsertRowid);
 
 // Hosts
@@ -40,28 +40,28 @@ const hosts = [
 ];
 
 // Visitors
-const insertVisitor = db.prepare(`INSERT INTO visitors (first_name, last_name, email, phone, company, nda_signed, nda_signed_at) VALUES (?, ?, ?, ?, ?, ?, ?)`);
+const insertVisitor = db.prepare(`INSERT INTO visitors (first_name, last_name, email, company, nda_signed, nda_signed_at) VALUES (?, ?, ?, ?, ?, ?)`);
 const visitors = [
-  insertVisitor.run('Hans', 'Schmidt', 'h.schmidt@bmw.de', '+49 89 382-0', 'BMW AG', 1, new Date(Date.now() - 86400000 * 5).toISOString()),
-  insertVisitor.run('Ingrid', 'Meier', 'i.meier@siemens.com', '+49 89 636-0', 'Siemens AG', 1, new Date(Date.now() - 86400000 * 10).toISOString()),
-  insertVisitor.run('Wolfgang', 'König', 'w.koenig@sap.com', '+49 6227 7-0', 'SAP SE', 1, new Date(Date.now() - 86400000 * 3).toISOString()),
-  insertVisitor.run('Ursula', 'Richter', 'u.richter@bosch.de', '+49 711 811-0', 'Robert Bosch GmbH', 0, null),
-  insertVisitor.run('Günter', 'Krause', 'g.krause@vw.de', '+49 5361 9-0', 'Volkswagen AG', 1, new Date(Date.now() - 86400000 * 7).toISOString()),
-  insertVisitor.run('Monika', 'Wagner', 'm.wagner@telekom.de', '+49 228 181-0', 'Deutsche Telekom AG', 1, new Date(Date.now() - 86400000 * 2).toISOString()),
-  insertVisitor.run('Dieter', 'Bauer', 'd.bauer@lufthansa.de', '+49 69 696-0', 'Lufthansa AG', 0, null),
-  insertVisitor.run('Renate', 'Schwarz', 'r.schwarz@allianz.de', '+49 89 3800-0', 'Allianz SE', 1, new Date(Date.now() - 86400000 * 1).toISOString()),
-  insertVisitor.run('Friedrich', 'Hartmann', 'f.hartmann@dhl.de', '+49 228 182-0', 'Deutsche Post DHL', 0, null),
-  insertVisitor.run('Helga', 'Jung', 'h.jung@basf.de', '+49 621 60-0', 'BASF SE', 1, new Date(Date.now() - 86400000 * 4).toISOString()),
-  insertVisitor.run('Erich', 'Lange', 'e.lange@thyssen.de', '+49 201 844-0', 'ThyssenKrupp AG', 0, null),
-  insertVisitor.run('Karin', 'Krüger', 'k.krueger@adidas.de', '+49 9132 84-0', 'Adidas AG', 1, new Date(Date.now() - 86400000 * 6).toISOString()),
-  insertVisitor.run('Otto', 'Braun', 'o.braun@porsche.de', '+49 711 911-0', 'Porsche AG', 1, new Date(Date.now() - 86400000 * 8).toISOString()),
-  insertVisitor.run('Anna', 'Schäfer', 'a.schaefer@zalando.de', '+49 30 2000-0', 'Zalando SE', 0, null),
-  insertVisitor.run('Bernd', 'Koch', 'b.koch@daimler.de', '+49 711 17-0', 'Mercedes-Benz AG', 1, new Date(Date.now() - 86400000 * 9).toISOString()),
-  insertVisitor.run('Petra', 'Vogt', 'p.vogt@bayer.de', '+49 214 30-0', 'Bayer AG', 1, new Date(Date.now() - 86400000 * 11).toISOString()),
-  insertVisitor.run('Stefan', 'Frank', 's.frank@eon.de', '+49 211 45-0', 'E.ON SE', 0, null),
-  insertVisitor.run('Brigitte', 'Arnold', 'b.arnold@rwe.de', '+49 201 12-0', 'RWE AG', 1, new Date(Date.now() - 86400000 * 12).toISOString()),
-  insertVisitor.run('Horst', 'Peters', 'h.peters@henkel.de', '+49 211 797-0', 'Henkel AG', 0, null),
-  insertVisitor.run('Susanne', 'Winter', 's.winter@otto.de', '+49 40 6461-0', 'Otto GmbH', 1, new Date(Date.now() - 86400000 * 13).toISOString()),
+  insertVisitor.run('Hans', 'Schmidt', 'h.schmidt@bmw.de', 'BMW AG', 1, new Date(Date.now() - 86400000 * 5).toISOString()),
+  insertVisitor.run('Ingrid', 'Meier', 'i.meier@siemens.com', 'Siemens AG', 1, new Date(Date.now() - 86400000 * 10).toISOString()),
+  insertVisitor.run('Wolfgang', 'König', 'w.koenig@sap.com', 'SAP SE', 1, new Date(Date.now() - 86400000 * 3).toISOString()),
+  insertVisitor.run('Ursula', 'Richter', 'u.richter@bosch.de', 'Robert Bosch GmbH', 0, null),
+  insertVisitor.run('Günter', 'Krause', 'g.krause@vw.de', 'Volkswagen AG', 1, new Date(Date.now() - 86400000 * 7).toISOString()),
+  insertVisitor.run('Monika', 'Wagner', 'm.wagner@telekom.de', 'Deutsche Telekom AG', 1, new Date(Date.now() - 86400000 * 2).toISOString()),
+  insertVisitor.run('Dieter', 'Bauer', 'd.bauer@lufthansa.de', 'Lufthansa AG', 0, null),
+  insertVisitor.run('Renate', 'Schwarz', 'r.schwarz@allianz.de', 'Allianz SE', 1, new Date(Date.now() - 86400000 * 1).toISOString()),
+  insertVisitor.run('Friedrich', 'Hartmann', 'f.hartmann@dhl.de', 'Deutsche Post DHL', 0, null),
+  insertVisitor.run('Helga', 'Jung', 'h.jung@basf.de', 'BASF SE', 1, new Date(Date.now() - 86400000 * 4).toISOString()),
+  insertVisitor.run('Erich', 'Lange', 'e.lange@thyssen.de', 'ThyssenKrupp AG', 0, null),
+  insertVisitor.run('Karin', 'Krüger', 'k.krueger@adidas.de', 'Adidas AG', 1, new Date(Date.now() - 86400000 * 6).toISOString()),
+  insertVisitor.run('Otto', 'Braun', 'o.braun@porsche.de', 'Porsche AG', 1, new Date(Date.now() - 86400000 * 8).toISOString()),
+  insertVisitor.run('Anna', 'Schäfer', 'a.schaefer@zalando.de', 'Zalando SE', 0, null),
+  insertVisitor.run('Bernd', 'Koch', 'b.koch@daimler.de', 'Mercedes-Benz AG', 1, new Date(Date.now() - 86400000 * 9).toISOString()),
+  insertVisitor.run('Petra', 'Vogt', 'p.vogt@bayer.de', 'Bayer AG', 1, new Date(Date.now() - 86400000 * 11).toISOString()),
+  insertVisitor.run('Stefan', 'Frank', 's.frank@eon.de', 'E.ON SE', 0, null),
+  insertVisitor.run('Brigitte', 'Arnold', 'b.arnold@rwe.de', 'RWE AG', 1, new Date(Date.now() - 86400000 * 12).toISOString()),
+  insertVisitor.run('Horst', 'Peters', 'h.peters@henkel.de', 'Henkel AG', 0, null),
+  insertVisitor.run('Susanne', 'Winter', 's.winter@otto.de', 'Otto GmbH', 1, new Date(Date.now() - 86400000 * 13).toISOString()),
 ];
 
 // Badge counter

@@ -21,7 +21,6 @@ const T = {
     backIn: 'Zurück in',
     seconds: 'Sekunden...',
     hostLabel: 'Gastgeber',
-    badgeLabel: 'Badge-Nr.',
     errorTitle: 'Fehler',
     retry: 'Erneut versuchen',
     // Checkout page
@@ -51,7 +50,6 @@ const T = {
     checkinBtn: 'Einchecken',
     checkinLoading: 'Wird eingecheckt...',
     required: 'Pflichtfeld',
-    badgeNumber: 'Badge-Nummer',
   },
   en: {
     welcome: 'Welcome to abat AG',
@@ -73,7 +71,6 @@ const T = {
     backIn: 'Back in',
     seconds: 'seconds...',
     hostLabel: 'Host',
-    badgeLabel: 'Badge No.',
     errorTitle: 'Error',
     retry: 'Try again',
     // Checkout page
@@ -103,7 +100,6 @@ const T = {
     checkinBtn: 'Check in',
     checkinLoading: 'Checking in...',
     required: 'Required',
-    badgeNumber: 'Badge number',
   },
 };
 

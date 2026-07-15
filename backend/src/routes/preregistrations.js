@@ -276,12 +276,12 @@ router.put('/:id', authenticate, (req, res) => {
   res.json(prereg);
 });
 
-// DELETE /:id — superadmin: permanent delete; others: soft cancel
+// DELETE /:id — admin: permanent delete; others: soft cancel
 router.delete('/:id', authenticate, (req, res) => {
   const prereg = db.prepare('SELECT id FROM preregistrations WHERE id = ?').get(req.params.id);
   if (!prereg) return res.status(404).json({ error: 'Vorregistrierung nicht gefunden' });
 
-  if (req.user.role === 'superadmin') {
+  if (req.user.role === 'admin') {
     db.prepare('DELETE FROM preregistrations WHERE id = ?').run(req.params.id);
     try { log('VORREGISTRIERUNG_GELÖSCHT', req.user.name, `Vorregistrierung ID ${req.params.id}`); } catch {}
     res.json({ message: 'Vorregistrierung gelöscht' });

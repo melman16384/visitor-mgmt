@@ -168,12 +168,6 @@ export default function KioskCheckin() {
             <p className="text-sm text-abat-grau">{t('hostLabel')}</p>
             <p className="font-semibold text-abat-dunkelgrau">{result?.visit?.host_name || '–'}</p>
           </div>
-          {result?.visit?.badge_number && (
-            <div>
-              <p className="text-sm text-abat-grau">{t('badgeLabel')}</p>
-              <p className="font-semibold text-abat-dunkelgrau">{result.visit.badge_number}</p>
-            </div>
-          )}
         </div>
         <p className="kiosk-fade-up kiosk-delay-4 text-abat-hellblau font-semibold">{t('hostNotified')}</p>
         <p className="kiosk-fade-up kiosk-delay-5 text-abat-grau text-sm mt-4">{t('backIn')} {countdown} {t('seconds')}</p>

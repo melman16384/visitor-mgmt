@@ -201,7 +201,6 @@ async function sendHostNotification(host, visitor, visit) {
     visitor.company ? detailRow('Unternehmen', visitor.company) : '',
     visit.purpose ? detailRow('Besuchszweck', visit.purpose) : '',
     detailRow('Eingecheckt um', `${checkinTime} Uhr`),
-    detailRow('Badge-Nr.', `<span style="font-family:'Courier New',monospace;background:#F1F3F5;padding:2px 8px;border-radius:4px;">${visit.badge_number}</span>`),
     visitor.abat_id ? detailRow('abat-ID', `<span style="font-family:'Courier New',monospace;color:#004B87;">${visitor.abat_id}</span>`) : '',
   ].join('');
 
@@ -254,7 +253,6 @@ async function sendVisitorConfirmation(visitor, visit, host) {
     detailRow('Uhrzeit', `${checkinTime} Uhr`),
     host ? detailRow('Gastgeber', host.name) : '',
     visit.purpose ? detailRow('Besuchszweck', visit.purpose) : '',
-    detailRow('Badge-Nr.', `<span style="font-family:'Courier New',monospace;background:#F1F3F5;padding:2px 8px;border-radius:4px;">${visit.badge_number}</span>`),
   ].join('');
 
   const content = `

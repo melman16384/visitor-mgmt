@@ -94,6 +94,7 @@ app.use('/api/settings', settingsRoutes);
 
 app.use('/api/audit-log', require('./routes/audit-log'));
 app.use('/api/host-portal', loginLimiter, require('./routes/host-portal'));
+app.use('/api/ad-sync', require('./routes/ad-sync'));
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -118,12 +119,14 @@ require('./db/database');
 auditCleanup();
 const { scheduleNext } = require('./services/auto-checkout');
 const { scheduleExpiry } = require('./services/prereg-expiry');
+const { scheduleNext: scheduleAdSync } = require('./services/ad-sync-schedule');
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`✓ Besucherverwaltung Backend läuft auf Port ${PORT}`);
   console.log(`  API: http://localhost:${PORT}/api`);
   console.log(`  Umgebung: ${process.env.NODE_ENV || 'development'}`);
   scheduleNext();
   scheduleExpiry();
+  scheduleAdSync();
 });
 
 module.exports = app;

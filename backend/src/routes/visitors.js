@@ -131,7 +131,7 @@ router.get('/active', authenticate, (req, res) => {
 
 // POST / - create or find visitor + check-in (public for kiosk)
 router.post('/', async (req, res) => {
-  const { first_name, last_name, email, phone, company, host_id, host_name_free, purpose, nda_signed, location_id, notes, signature_base64 } = req.body;
+  const { first_name, last_name, email, company, host_id, host_name_free, purpose, nda_signed, location_id, notes, signature_base64 } = req.body;
 
   if (!first_name || !last_name) {
     return res.status(400).json({ error: 'Vor- und Nachname erforderlich' });
@@ -154,15 +154,15 @@ router.post('/', async (req, res) => {
     } while (db.prepare('SELECT id FROM visitors WHERE abat_id = ?').get(abatId));
 
     const result = db.prepare(`
-      INSERT INTO visitors (first_name, last_name, email, phone, company, nda_signed, nda_signed_at, abat_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(first_name, last_name, email || null, phone || null, company || null,
+      INSERT INTO visitors (first_name, last_name, email, company, nda_signed, nda_signed_at, abat_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(first_name, last_name, email || null, company || null,
       nda_signed ? 1 : 0, nda_signed ? new Date().toISOString() : null, abatId);
     visitor = db.prepare('SELECT * FROM visitors WHERE id = ?').get(result.lastInsertRowid);
   } else {
     // Update existing visitor info
-    db.prepare(`UPDATE visitors SET phone = COALESCE(?, phone), company = COALESCE(?, company), nda_signed = CASE WHEN ? = 1 THEN 1 ELSE nda_signed END WHERE id = ?`)
-      .run(phone || null, company || null, nda_signed ? 1 : 0, visitor.id);
+    db.prepare(`UPDATE visitors SET company = COALESCE(?, company), nda_signed = CASE WHEN ? = 1 THEN 1 ELSE nda_signed END WHERE id = ?`)
+      .run(company || null, nda_signed ? 1 : 0, visitor.id);
     visitor = db.prepare('SELECT * FROM visitors WHERE id = ?').get(visitor.id);
   }
 
@@ -229,11 +229,11 @@ router.get('/:id', authenticate, (req, res) => {
 
 // PUT /:id
 router.put('/:id', authenticate, (req, res) => {
-  const { first_name, last_name, email, phone, company, nda_signed } = req.body;
+  const { first_name, last_name, email, company, nda_signed } = req.body;
   db.prepare(`
-    UPDATE visitors SET first_name = ?, last_name = ?, email = ?, phone = ?, company = ?, nda_signed = ?
+    UPDATE visitors SET first_name = ?, last_name = ?, email = ?, company = ?, nda_signed = ?
     WHERE id = ?
-  `).run(first_name, last_name, email, phone, company, nda_signed ? 1 : 0, req.params.id);
+  `).run(first_name, last_name, email, company, nda_signed ? 1 : 0, req.params.id);
 
   const visitor = db.prepare('SELECT * FROM visitors WHERE id = ?').get(req.params.id);
   res.json(visitor);
@@ -264,8 +264,8 @@ router.post('/:id/checkin', authenticate, async (req, res) => {
   res.status(201).json({ visitor, visit });
 });
 
-// DELETE /:id — superadmin only, only if no active visit
-router.delete('/:id', authenticate, requireRole(['superadmin']), (req, res) => {
+// DELETE /:id — admin only, only if no active visit
+router.delete('/:id', authenticate, requireRole(['admin']), (req, res) => {
   const visitor = db.prepare('SELECT * FROM visitors WHERE id = ?').get(req.params.id);
   if (!visitor) return res.status(404).json({ error: 'Besucher nicht gefunden' });
 
@@ -303,13 +303,12 @@ router.get('/:id/badge/:visitId', authenticate, async (req, res) => {
     hostName: host ? host.name : '',
     date: checkinDate.toLocaleDateString('de-DE'),
     time: checkinDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
-    badgeNumber: visit.badge_number,
     qrBuffer,
   });
 
   res.set({
     'Content-Type': 'application/pdf',
-    'Content-Disposition': `attachment; filename="badge-${visitor.last_name}-${visit.badge_number}.pdf"`,
+    'Content-Disposition': `attachment; filename="badge-${visitor.last_name}-${visitor.abat_id}.pdf"`,
   });
   res.send(pdf);
 });

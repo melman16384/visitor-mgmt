@@ -6,8 +6,7 @@ const { authenticate, requireRole } = require('../middleware/auth');
 const { getSmtpConfig } = require('../services/email');
 
 const router = express.Router();
-const adminOnly = [authenticate, requireRole(['superadmin', 'admin'])];
-const superadminOnly = [authenticate, requireRole(['superadmin'])];
+const adminOnly = [authenticate, requireRole(['admin'])];
 
 // GET /system — all settings
 router.get('/system', ...adminOnly, (req, res) => {
@@ -18,7 +17,7 @@ router.get('/system', ...adminOnly, (req, res) => {
 
 // PUT /system — update one or more settings
 router.put('/system', ...adminOnly, (req, res) => {
-  const allowed = ['gdpr_retention_days', 'visitor_email_confirmation', 'printer_enabled', 'printer_ip', 'printer_port', 'smtp_security', 'privacy_policy_text', 'privacy_policy_enabled', 'auto_checkout_enabled', 'auto_checkout_time', 'show_demo_credentials'];
+  const allowed = ['gdpr_retention_days', 'visitor_email_confirmation', 'printer_enabled', 'printer_ip', 'printer_port', 'smtp_security', 'privacy_policy_text', 'privacy_policy_enabled', 'auto_checkout_enabled', 'auto_checkout_time'];
   const upsert = db.prepare('INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)');
   const updateMany = db.transaction((updates) => {
     for (const [key, value] of Object.entries(updates)) {
@@ -42,11 +41,9 @@ function getSecurityOptions(security) {
 router.get('/privacy-policy', (req, res) => {
   const textRow = db.prepare("SELECT value FROM system_settings WHERE key = 'privacy_policy_text'").get();
   const enabledRow = db.prepare("SELECT value FROM system_settings WHERE key = 'privacy_policy_enabled'").get();
-  const demoRow = db.prepare("SELECT value FROM system_settings WHERE key = 'show_demo_credentials'").get();
   res.json({
     text: textRow?.value || '',
     enabled: enabledRow?.value !== 'false',
-    show_demo_credentials: demoRow?.value !== 'false',
   });
 });
 
@@ -65,8 +62,8 @@ router.get('/smtp-config', ...adminOnly, (req, res) => {
   });
 });
 
-// PUT /smtp-config — save SMTP config to DB (superadmin only)
-router.put('/smtp-config', ...superadminOnly, (req, res) => {
+// PUT /smtp-config — save SMTP config to DB (admin only)
+router.put('/smtp-config', ...adminOnly, (req, res) => {
   const upsert = db.prepare('INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)');
   const tx = db.transaction((body) => {
     const fields = ['smtp_host', 'smtp_port', 'smtp_user', 'from_email', 'from_name', 'smtp_security', 'company_name'];
@@ -131,7 +128,9 @@ router.post('/email-test', ...adminOnly, async (req, res) => {
     });
     res.json({ message: `Test-E-Mail erfolgreich an ${to} gesendet` });
   } catch (err) {
-    res.status(502).json({ error: `SMTP-Fehler: ${err.message}` });
+    // Not 502/503/504 — Cloudflare intercepts those gateway-class codes and
+    // replaces the body with its own generic error page.
+    res.status(400).json({ error: `SMTP-Fehler: ${err.message}` });
   }
 });
 
@@ -146,7 +145,6 @@ router.post('/gdpr/cleanup', ...adminOnly, (req, res) => {
       first_name = '[GELÖSCHT]',
       last_name = '[GELÖSCHT]',
       email = NULL,
-      phone = NULL,
       company = NULL,
       photo_path = NULL
     WHERE created_at < ?

@@ -93,6 +93,8 @@ APP_URL=https://besucher.meinefirma.de
 
 > **JWT_SECRET** niemals leer lassen und nicht in Git einchecken.
 >
+> **2FA und AD-Sync brauchen keine `.env`-Einträge:** Beide Features werden vollständig über die Admin-UI (**Einstellungen**) konfiguriert und in der Datenbank gespeichert — 2FA ist für `admin`-Konten ohnehin verpflichtend und erfordert keine Vorbereitung in der `.env`.
+>
 > **DB_PATH absolut setzen:** Bei einem relativen Pfad (`./data/visitors.db`) hängt die genutzte
 > Datenbank vom Startverzeichnis des Prozesses ab. Wird das Backend versehentlich aus einem anderen
 > Verzeichnis gestartet (z.B. durch pm2-cwd, ein Cron-Backup oder einen manuellen `node`-Aufruf aus
@@ -291,23 +293,27 @@ Standard-Login nach erstem Start:
 
 | E-Mail | Passwort | Rolle |
 |---|---|---|
-| `admin@example.com` | `ChangeMe123!` | superadmin |
+| `admin@example.com` | `ChangeMe123!` | admin |
 
 Eigene Zugangsdaten beim ersten Start setzen: `ADMIN_EMAIL` und `ADMIN_PASSWORD` in der `.env` eintragen **bevor** das Backend das erste Mal gestartet wird.
 
 > Passwort sofort nach dem ersten Login unter **Einstellungen → Passwort ändern** ändern.
+>
+> **Zwei-Faktor-Authentifizierung ist für `admin`-Konten verpflichtend.** Direkt nach dem ersten Login leitet die App ohne Ausweichmöglichkeit auf `/2fa-setup` um — dort mit einer Authenticator-App (Google Authenticator, Microsoft Authenticator, …) den angezeigten QR-Code scannen und den 6-stelligen Code bestätigen. Die danach angezeigten 10 Backup-Codes sofort sichern (Passwort-Manager, ausgedruckt im Safe o.ä.) — sie werden nur einmal angezeigt und sind der einzige Weg zurück ins Konto, falls das Smartphone mit der Authenticator-App verloren geht.
 
 ---
 
 ## 8a. Zugangsdaten zurücksetzen
 
-Falls der Login nicht funktioniert oder Passwörter vergessen wurden, können sie direkt per SQLite zurückgesetzt werden — kein Serverneustart nötig.
+Falls der Login nicht funktioniert, Passwörter vergessen wurden oder ein Admin-Account ausgesperrt ist (Account-Lockout nach 5 Fehlversuchen, oder Zugriff auf Authenticator-App + Backup-Codes verloren), können Passwort, Lockout-Status und 2FA direkt per SQLite zurückgesetzt werden — kein Serverneustart nötig.
+
+> Falls ein **zweiter** funktionierender Admin-Account existiert, ist der SQL-Weg meist gar nicht nötig: In **Einstellungen → Benutzer** kann jeder Admin einen anderen gesperrten Benutzer entsperren (Symbol bei gesperrten Accounts) oder dessen 2FA zurücksetzen (Symbol bei Accounts mit aktivem 2FA). Die folgenden Befehle sind nur für den Fall gedacht, dass **kein** Admin mehr zugreifen kann.
 
 ### Vorhandene Benutzer anzeigen
 
 ```bash
 sqlite3 /opt/visitor-mgmt/backend/data/visitors.db \
-  "SELECT id, name, email, role, active FROM users;"
+  "SELECT id, name, email, role, active, failed_login_attempts, locked_until, totp_enabled FROM users;"
 ```
 
 ### Passwort eines einzelnen Accounts zurücksetzen
@@ -337,6 +343,24 @@ sqlite3 /opt/visitor-mgmt/backend/data/visitors.db "UPDATE users SET password_ha
 ```
 
 Danach mit der jeweiligen E-Mail-Adresse und dem neuen Passwort einloggen. Passwort anschließend unter **Einstellungen → Passwort ändern** personalisieren.
+
+### Account-Lockout aufheben
+
+```bash
+EMAIL="admin@example.com"
+sqlite3 /opt/visitor-mgmt/backend/data/visitors.db \
+  "UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE email = '$EMAIL';"
+```
+
+### 2FA zurücksetzen (Authenticator-App + Backup-Codes verloren)
+
+```bash
+EMAIL="admin@example.com"
+sqlite3 /opt/visitor-mgmt/backend/data/visitors.db \
+  "UPDATE users SET totp_secret = NULL, totp_enabled = 0, totp_backup_codes = NULL WHERE email = '$EMAIL';"
+```
+
+> Da 2FA für `admin`-Konten verpflichtend ist, erzwingt die App beim nächsten Login sofort wieder die Einrichtung unter `/2fa-setup`.
 
 ---
 

@@ -23,7 +23,7 @@ router.post('/checkout-by-qr', (req, res) => {
 
   if (!visit) return res.status(404).json({ error: 'Kein aktiver Besuch mit diesem QR-Code gefunden' });
 
-  db.prepare(`UPDATE visits SET checked_out_at = CURRENT_TIMESTAMP, status = 'completed' WHERE id = ?`).run(visit.id);
+  db.prepare(`UPDATE visits SET checked_out_at = ?, status = 'completed' WHERE id = ?`).run(new Date().toISOString(), visit.id);
   const updated = db.prepare('SELECT * FROM visits WHERE id = ?').get(visit.id);
   sendVisitorCheckout({ first_name: visit.first_name, last_name: visit.last_name, email: visit.email }, updated, visit.location_name).catch(() => {});
   res.json({ success: true, visitor: { first_name: visit.first_name, last_name: visit.last_name, company: visit.company, host_name: visit.host_name } });
@@ -47,7 +47,7 @@ router.post('/checkout-by-abat-id', (req, res) => {
 
   if (!visit) return res.status(404).json({ error: 'Kein aktiver Besuch für diese abat-ID gefunden' });
 
-  db.prepare(`UPDATE visits SET checked_out_at = CURRENT_TIMESTAMP, status = 'completed' WHERE id = ?`).run(visit.id);
+  db.prepare(`UPDATE visits SET checked_out_at = ?, status = 'completed' WHERE id = ?`).run(new Date().toISOString(), visit.id);
   const updated = db.prepare('SELECT * FROM visits WHERE id = ?').get(visit.id);
   sendVisitorCheckout({ first_name: visit.first_name, last_name: visit.last_name, email: visit.email }, updated, visit.location_name).catch(() => {});
   res.json({ success: true, visitor: { first_name: visit.first_name, last_name: visit.last_name, company: visit.company, abat_id: visit.abat_id, host_name: visit.host_name } });

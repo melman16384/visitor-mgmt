@@ -77,7 +77,6 @@ export default function EvacuationPrint() {
         tr:nth-child(even) td { background: #f9f9f9; }
         .col-no { width: 32px; color: #888; font-size: 10px; }
         .col-name { font-weight: bold; }
-        .col-badge { font-family: monospace; font-size: 10px; color: #004B87; }
         .col-time { font-size: 10px; color: #666; }
         .col-check { width: 28px; text-align: center; }
         .checkbox { display: inline-block; width: 14px; height: 14px; border: 1.5px solid #555; }
@@ -137,7 +136,6 @@ export default function EvacuationPrint() {
                     <th>Name</th>
                     <th>Firma</th>
                     <th>Gastgeber</th>
-                    <th>Badge</th>
                     <th>Check-in</th>
                     <th className="col-check">✓</th>
                   </tr>
@@ -149,7 +147,6 @@ export default function EvacuationPrint() {
                       <td className="col-name">{v.first_name} {v.last_name}</td>
                       <td>{v.company || '–'}</td>
                       <td>{v.host_name || '–'}</td>
-                      <td className="col-badge">{v.badge_number || '–'}</td>
                       <td className="col-time">{formatCheckin(v.checked_in_at)}</td>
                       <td className="col-check"><span className="checkbox" /></td>
                     </tr>

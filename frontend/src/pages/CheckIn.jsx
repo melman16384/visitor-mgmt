@@ -88,12 +88,6 @@ export default function CheckIn() {
         <p className="text-green-100 text-xl mb-2">
           Ihr Gastgeber <strong>{host?.name || result?.host_name || '–'}</strong> wurde benachrichtigt.
         </p>
-        {visit?.badge_number && (
-          <div className="bg-white/20 rounded-2xl px-8 py-4 mt-4">
-            <p className="text-green-100 text-sm mb-1">Badge-Nummer</p>
-            <p className="text-white text-3xl font-bold font-mono">{visit.badge_number}</p>
-          </div>
-        )}
         <div className="mt-8 flex items-center gap-3 text-green-200 text-sm">
           <RefreshCw size={16} className="animate-spin" />
           <span>Wird in {Math.round(RESET_DELAY / 1000)} Sekunden zurückgesetzt...</span>

@@ -15,9 +15,9 @@ function runAutoCheckout() {
   if (enabledRow?.value !== 'true') return;
 
   const result = db.prepare(`
-    UPDATE visits SET checked_out_at = datetime('now', 'localtime'), status = 'completed'
+    UPDATE visits SET checked_out_at = ?, status = 'completed'
     WHERE status = 'active'
-  `).run();
+  `).run(new Date().toISOString());
 
   if (result.changes > 0) {
     console.log(`[auto-checkout] ${result.changes} Besucher automatisch ausgecheckt`);

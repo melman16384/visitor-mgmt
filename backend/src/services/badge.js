@@ -1,7 +1,7 @@
 const PDFDocument = require('pdfkit');
 
 // A6 = 148×105mm  →  419.53×297.64 pt  (1pt = 1/72 inch)
-async function generateBadge({ visitorName, company, hostName, date, time, badgeNumber, qrBuffer }) {
+async function generateBadge({ visitorName, company, hostName, date, time, qrBuffer }) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A6', margin: 0, layout: 'landscape' });
     const chunks = [];
@@ -57,9 +57,8 @@ async function generateBadge({ visitorName, company, hostName, date, time, badge
     const ruleY = 154;
     doc.rect(8 + PAD, ruleY, W - 8 - PAD * 2, 1).fill('#E5E7EB');
 
-    // ── Info grid (2 columns) ──────────────────────────────────────────────────
+    // ── Info grid ──────────────────────────────────────────────────────────────
     const col1X = 8 + PAD;
-    const col2X = W / 2 + 4;
     const infoY  = ruleY + 12;
 
     // Label style
@@ -69,11 +68,7 @@ async function generateBadge({ visitorName, company, hostName, date, time, badge
       doc.fontSize(12).fillColor(DARK).font('Helvetica-Bold').text(text || '–', x, y, opts);
 
     lbl('Gastgeber / Host', col1X, infoY);
-    val(hostName || '–', col1X, infoY + 10, { width: W / 2 - PAD - 8 });
-
-    lbl('Badge-Nr.', col2X, infoY);
-    doc.fontSize(16).fillColor(BLUE).font('Helvetica-Bold')
-      .text(badgeNumber || '', col2X, infoY + 8);
+    val(hostName || '–', col1X, infoY + 10, { width: W - PAD * 2 - 8 });
 
     // ── Bottom rule ────────────────────────────────────────────────────────────
     const footY = H - 26;

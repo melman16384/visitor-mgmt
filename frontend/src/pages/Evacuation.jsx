@@ -49,7 +49,6 @@ function LocationSection({ location, startIndex }) {
             <th className="text-left px-5 py-2.5">{t('evacuation.table.name')}</th>
             <th className="text-left px-5 py-2.5">{t('evacuation.table.company')}</th>
             <th className="text-left px-5 py-2.5">{t('evacuation.table.host')}</th>
-            <th className="text-left px-5 py-2.5">{t('evacuation.table.badge')}</th>
             <th className="text-left px-5 py-2.5">{t('evacuation.table.checkin')}</th>
             <th className="text-center px-5 py-2.5 w-16">✓</th>
           </tr>
@@ -63,7 +62,6 @@ function LocationSection({ location, startIndex }) {
               </td>
               <td className="px-5 py-3 text-gray-500">{v.company || '–'}</td>
               <td className="px-5 py-3 text-gray-500">{v.host_name || '–'}</td>
-              <td className="px-5 py-3 font-mono text-primary-700 font-medium text-xs">{v.badge_number || '–'}</td>
               <td className="px-5 py-3 text-gray-400 text-xs">
                 <div className="flex items-center gap-1">
                   <Clock size={11} />

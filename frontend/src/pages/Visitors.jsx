@@ -231,21 +231,20 @@ export default function Visitors() {
                   <th className="text-left px-6 py-3">{t('visitors.table.visitor')}</th>
                   <th className="text-left px-6 py-3">{t('visitors.table.abatId')}</th>
                   <th className="text-left px-6 py-3">{t('visitors.table.host')}</th>
-                  <th className="text-left px-6 py-3">{t('common.status')}</th>
+                  {activeTab === 'all' && <th className="text-left px-6 py-3">{t('common.status')}</th>}
                   <th className="text-left px-6 py-3">
                     {activeTab === 'completed' ? t('visitors.table.checkedOut') : t('visitors.table.checkedIn')}
                   </th>
-                  <th className="text-left px-6 py-3">{t('visitors.table.badge')}</th>
                   <th className="px-6 py-3"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {loading ? (
-                  <tr><td colSpan={7} className="text-center py-16">
+                  <tr><td colSpan={activeTab === 'all' ? 6 : 5} className="text-center py-16">
                     <div className="inline-block w-6 h-6 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
                   </td></tr>
                 ) : visitors.length === 0 ? (
-                  <tr><td colSpan={7} className="text-center py-16 text-gray-400">{t('visitors.noData')}</td></tr>
+                  <tr><td colSpan={activeTab === 'all' ? 6 : 5} className="text-center py-16 text-gray-400">{t('visitors.noData')}</td></tr>
                 ) : visitors.map(v => (
                   <tr key={v.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
@@ -254,7 +253,7 @@ export default function Visitors() {
                         <div>
                           <div className="flex items-center gap-2">
                             <p className="font-medium text-gray-900">{v.first_name} {v.last_name}</p>
-                            {v.nda_signed ? <span className="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-medium">NDA</span> : null}
+                            {v.nda_signed ? <span className="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-medium">Datenschutz</span> : null}
                           </div>
                           <p className="text-xs text-gray-400">{v.company || '–'}</p>
                         </div>
@@ -266,15 +265,16 @@ export default function Visitors() {
                         : <span className="text-gray-300">–</span>}
                     </td>
                     <td className="px-6 py-4 text-gray-600">{v.host_name || '–'}</td>
-                    <td className="px-6 py-4">
-                      <StatusBadge visitStatus={v.visit_status} />
-                    </td>
+                    {activeTab === 'all' && (
+                      <td className="px-6 py-4">
+                        <StatusBadge visitStatus={v.visit_status} />
+                      </td>
+                    )}
                     <td className="px-6 py-4 text-gray-500">
                       {activeTab === 'completed'
                         ? fmtDate(v.checked_out_at)
                         : fmtDate(v.checked_in_at)}
                     </td>
-                    <td className="px-6 py-4 text-gray-500">{v.badge_number || '–'}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1 justify-end">
                         {v.visit_id && v.visit_status === 'active' && (
@@ -289,7 +289,7 @@ export default function Visitors() {
                             <LogOut size={15} />
                           </button>
                         )}
-                        {user?.role === 'superadmin' && v.visit_status !== 'active' && (
+                        {user?.role === 'admin' && v.visit_status !== 'active' && (
                           <button onClick={() => handleDelete(v.id, `${v.first_name} ${v.last_name}`)}
                             className="p-1.5 text-gray-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors" title={t('common.delete')}>
                             <Trash2 size={15} />

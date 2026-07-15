@@ -182,7 +182,7 @@ export default function Hosts() {
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-1 justify-end">
-                    {user?.role === 'superadmin' && (
+                    {user?.role === 'admin' && (
                       <button onClick={() => { setPwModal(h); setPwValue(''); }}
                         title="Portal-Passwort setzen"
                         className="p-1.5 text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors">

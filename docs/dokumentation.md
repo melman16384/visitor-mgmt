@@ -1,6 +1,6 @@
 # Besucherverwaltungssystem — Projektdokumentation
 
-> Erstellt: 15. Juni 2026 | Zuletzt aktualisiert: 26. Juni 2026 (Rev. 4)  
+> Erstellt: 15. Juni 2026 | Zuletzt aktualisiert: 15. Juli 2026 (Rev. 5)  
 > Kunde: **abat AG**  
 > Domain: https://visitor.luwilab.work  
 > Server: /opt/visitor-mgmt
@@ -21,19 +21,22 @@
 10. [abat-ID](#10-abat-id)
 11. [Dokumenten-Upload & Unterschrift](#11-dokumenten-upload--unterschrift)
 12. [Zugangsdaten & Benutzerrollen](#12-zugangsdaten--benutzerrollen)
-13. [Standortbasierte Zugriffskontrolle](#13-standortbasierte-zugriffskontrolle)
+    - 12a. [Standortbasierte Zugriffskontrolle](#12a-standortbasierte-zugriffskontrolle)
+13. [Check-in am Empfang (Dashboard/Visitors)](#13-check-in-am-empfang-dashboardvisitors)
 14. [E-Mail-System](#14-e-mail-system)
-16. [Auto-Checkout](#16-auto-checkout)
-17. [Host-Portal](#17-host-portal)
-18. [Audit-Log & Compliance](#18-audit-log--compliance)
-19. [Sicherheit](#19-sicherheit)
-20. [GDPR & Datenschutz](#20-gdpr--datenschutz)
-21. [Infrastruktur & Deployment](#21-infrastruktur--deployment)
-22. [SSL & Cloudflare](#22-ssl--cloudflare)
-23. [Umgebungsvariablen (.env)](#23-umgebungsvariablen-env)
-24. [Wichtige Befehle](#24-wichtige-befehle)
-25. [Fehlerbehebung](#25-fehlerbehebung)
-26. [Netzwerk & Firewall-Freigaben](#26-netzwerk--firewall-freigaben)
+15. [Auto-Checkout](#15-auto-checkout)
+    - 15a. [Vorregistrierungs-Ablauf (Expiry-Job)](#15a-vorregistrierungs-ablauf-expiry-job)
+    - 15b. [Gastgeber-Synchronisierung (AD-Sync)](#15b-gastgeber-synchronisierung-ad-sync)
+16. [Host-Portal](#16-host-portal)
+17. [Audit-Log & Compliance](#17-audit-log--compliance)
+18. [Sicherheit](#18-sicherheit)
+19. [GDPR & Datenschutz](#19-gdpr--datenschutz)
+20. [Infrastruktur & Deployment](#20-infrastruktur--deployment)
+21. [SSL & Cloudflare](#21-ssl--cloudflare)
+22. [Umgebungsvariablen (.env)](#22-umgebungsvariablen-env)
+23. [Wichtige Befehle](#23-wichtige-befehle)
+24. [Fehlerbehebung](#24-fehlerbehebung)
+25. [Netzwerk & Firewall-Freigaben](#25-netzwerk--firewall-freigaben)
 
 ---
 
@@ -48,8 +51,7 @@ Ein vollständiges, webbasiertes Besucherverwaltungssystem für Unternehmen. Bes
 | Check-in / Check-out | Walk-in, Kamera-QR-Scan oder Vorregistrierung; auch manuell im Dashboard |
 | Vorregistrierung | Gastgeber kann Besucher voranmelden, QR-Code per E-Mail; Gruppenregistrierung |
 | QR-Code Vorregistrierung | Server-seitig generiert (kein externer Dienst), Anzeige im Admin-Modal |
-| Badge-Generierung | A6-PDF (Landscape) mit Name, Firma, Gastgeber, QR-Code |
-| Badge-Generierung | A6-PDF (Landscape) mit Name, Firma, Gastgeber, QR-Code — downloadbar |
+| Badge-Generierung | A6-PDF (Landscape) mit Name, Firma, Gastgeber, QR-Code — downloadbar. Keine Badge-Nummer mehr sichtbar (siehe [6.](#6-backend-api)) |
 | abat-ID | Permanente Besucher-ID im Format `ABAT-########`; in E-Mail + Kiosk-Erfolgsscreen |
 | Kiosk-Modus | 2 Optionen: Einchecken, Auschecken — kein Login nötig |
 | Kiosk Check-in Flow | Mehrstufig: QR-Scan oder abat-ID → Daten bestätigen → Datenschutz unterschreiben → Erfolg |
@@ -63,21 +65,22 @@ Ein vollständiges, webbasiertes Besucherverwaltungssystem für Unternehmen. Bes
 | SMTP-Verschlüsselung | STARTTLS / SSL/TLS / Keine — konfigurierbar im Admin |
 | Mehrere Standorte | Unterstützung für mehrere Firmenstandorte |
 | Standortbasierte Zugriffskontrolle | Empfang-Benutzer können auf bestimmte Standorte beschränkt werden |
-| Benutzerverwaltung | Anlegen, Bearbeiten, Deaktivieren von Benutzern im Admin (superadmin) |
+| Benutzerverwaltung | Anlegen, Bearbeiten, Deaktivieren, Entsperren und endgültiges Löschen von Benutzern im Admin (nur `admin`) |
 | Besuchsgrundauswahl | Konfigurierbare Besuchszwecke im Admin |
 | Auto-Checkout | Automatisches Auschecken aller aktiven Besucher täglich um 19:00 Uhr (konfigurierbar) |
 | Vorregistrierungs-Ablauf | Abgelaufene Vorregistrierungen werden täglich um 00:05 Uhr automatisch auf `expired` gesetzt |
 | Host-Portal | Gastgeber können sich separat einloggen; mobiloptimiert (Karten + Bottom-Navigation); Ansicht: Angekündigt / Anwesend / Vergangen; eigenes Passwort ändern |
-| **Schnell-Check-in** | Empfang checkt bekannte/vorregistrierte Besucher mit 1–2 Klicks ein — Name tippen → auswählen → fertig |
 | Audit-Log | 90 Tage Aufbewahrung, Tagesprotokoll-Download, Compliance-Bericht als CSV |
-| Superadmin-Löschrechte | Besucher und Vorregistrierungen dauerhaft aus der Datenbank entfernen |
-| Rollenverwaltung | superadmin / admin / receptionist / host |
+| Admin-Löschrechte | Besucher, Vorregistrierungen und (deaktivierte) Benutzer dauerhaft aus der Datenbank entfernen |
+| Rollenverwaltung | admin / receptionist / host (Rolle `superadmin` wurde entfernt — bestehende superadmin-Konten wurden beim Upgrade automatisch zu `admin`, siehe [12.](#12-zugangsdaten--benutzerrollen)) |
+| **Zwei-Faktor-Authentifizierung (2FA)** | TOTP-basiert (Authenticator-App), **verpflichtend für alle `admin`-Konten** — erzwungene Einrichtung direkt nach Login, Backup-Codes, Account-Sperre nach 5 Fehlversuchen (15 Min.) |
+| **Gastgeber-Synchronisierung (AD-Sync)** | Gastgeber automatisch aus Active Directory/LDAP übernehmen; täglicher Sync um 03:00 Uhr oder manuell auslösbar (nur `admin`) |
 | GDPR-Datenlöschung | Automatische Anonymisierung nach konfigurierbaren Tagen |
 | abat AG CI | Logo, Mulish-Schrift, Markenfarben durchgängig |
 | Automatisches DB-Backup | Tägliches SQLite-Backup um 03:00 Uhr via systemd Timer; 30 Tage Aufbewahrung |
 | Besuchszweck-Sortierung | Reihenfolge per Drag & Drop im Admin anpassbar |
 | **Mehrsprachigkeit (i18n)** | Admin-Panel in DE / EN; Sprachumschalter in der Sidebar; Kiosk hat eigenes i18n-System (DE/EN) |
-| Microsoft SSO | Optional via `.env` aktivierbar (`MS_SSO_ENABLED=true` + Client-ID/Secret/Tenant-ID) |
+| Microsoft SSO (Host-Portal) | Vorbereitet, aktuell **nicht funktionsfähig ohne Zusatzarbeit** — siehe Hinweis in [16.](#16-host-portal) |
 
 ---
 
@@ -131,8 +134,9 @@ Node.js Backend (Port 3001)
 - **Frontend:** React 19 + Vite 8 + Tailwind CSS 4 + Mulish Font + react-i18next (i18n)
 - **Backend:** Node.js (≥ 20, getestet auf 24) + Express.js 5
 - **Datenbank:** SQLite (better-sqlite3 12, WAL-Modus)
-- **Auth:** JWT (JSON Web Tokens) — Admin-Token: 8h, Host-Token: 12h
-- **Sicherheit:** helmet (HTTP-Header), express-rate-limit (Brute-Force-Schutz), bcryptjs (cost 12)
+- **Auth:** JWT (JSON Web Tokens) — Admin-Token: 8h, Host-Token: 12h; TOTP-2FA via otplib (verpflichtend für `admin`)
+- **Sicherheit:** helmet (HTTP-Header), express-rate-limit (Brute-Force-Schutz), bcryptjs (cost 12), Account-Lockout (5 Fehlversuche → 15 Min. Sperre)
+- **Verzeichnisdienst:** ldapts (Active-Directory-Sync für Gastgeber, siehe [Abschnitt 15b](#15b-gastgeber-synchronisierung-ad-sync))
 - **PDF:** PDFKit (Badge-Generierung A6 Landscape)
 - **QR-Codes:** qrcode (Generierung) + html5-qrcode (Kamera-Scanner)
 - **Unterschrift:** signature_pad (Canvas-basiert)
@@ -165,27 +169,32 @@ Node.js Backend (Port 3001)
 │   │   ├── middleware/
 │   │   │   └── auth.js              # JWT-Middleware, requireRole(), location_ids laden
 │   │   ├── routes/
-│   │   │   ├── auth.js              # Login, /me, Passwort ändern
+│   │   │   ├── auth.js              # Login (inkl. 2FA-Zwischenschritt), /me, Passwort ändern, 2FA-Setup/Verify/Disable
+│   │   │   ├── ad-sync.js           # AD-Sync: Konfiguration, Status, manueller Sync-Trigger (admin)
 │   │   │   ├── audit-log.js         # Audit-Log: Dateiliste, Download, Compliance-Bericht
 │   │   │   ├── dashboard.js         # Stats, Chart-Daten, Recent visits
 │   │   │   ├── documents.js         # Dokument-Upload + Unterschrift
-│   │   │   ├── host-portal.js       # Host-Portal: Login, Besucher, Vorregistrierungen, Passwort ändern
+│   │   │   ├── host-portal.js       # Host-Portal: Login, Besucher, Vorregistrierungen, Passwort ändern, MS-SSO-Redirect
 │   │   │   ├── hosts.js             # CRUD Gastgeber (GET public, ohne password_hash)
-│   │   │   ├── locations.js         # CRUD Standorte
+│   │   │   ├── locations.js         # CRUD Standorte (inkl. Land, Zeitzone, Vor-Ort-Kontakt)
 │   │   │   ├── preregistrations.js  # Vorregistrierung + Batch + QR-Versand
-│   │   │   ├── reports.js           # Berichte, Evakuierung (standortgefiltert), CSV
+│   │   │   ├── reports.js           # Berichte, Evakuierung, CSV (standort-/rollengefiltert)
 │   │   │   ├── settings.js          # System-Settings, GDPR-Cleanup, E-Mail-Test
-│   │   │   ├── users.js             # CRUD Benutzer + Standortzuweisung (superadmin)
+│   │   │   ├── users.js             # CRUD Benutzer + Standortzuweisung, Unlock, 2FA-Reset (admin)
 │   │   │   ├── visit-purposes.js    # CRUD + Reorder Besuchszwecke (GET public)
 │   │   │   ├── visitors.js          # CRUD Besucher + Check-in (standortgefiltert)
 │   │   │   └── visits.js            # Check-out, Checkout per QR (badge_number ODER qr_code)
 │   │   ├── services/
+│   │   │   ├── ad-sync.js           # LDAP-Bind + Suche, Hosts anlegen/aktualisieren/deaktivieren (ldapts)
+│   │   │   ├── ad-sync-schedule.js  # Täglicher AD-Sync um 03:00 Uhr per setTimeout
 │   │   │   ├── audit-log.js         # Log-Schreiben, Cleanup (90 Tage), Dateiliste
 │   │   │   ├── auto-checkout.js     # Täglicher Auto-Checkout per setTimeout
-│   │   │   ├── badge.js             # PDF-Badge Generierung (PDFKit, A6 Landscape)
+│   │   │   ├── badge.js             # PDF-Badge Generierung (PDFKit, A6 Landscape) — ohne Badge-Nummer
 │   │   │   ├── email.js             # Nodemailer: alle ausgehenden Mails
+│   │   │   ├── label-printer.js     # Etikettendrucker-Rendering — Code vorhanden, aber in keiner Route mehr verdrahtet (siehe [1.](#1-projektübersicht))
 │   │   │   ├── prereg-expiry.js     # Tägliche Markierung abgelaufener Vorregistrierungen
-│   │   │   └── qrcode.js            # QR-Code als Buffer oder DataURL
+│   │   │   ├── qrcode.js            # QR-Code als Buffer oder DataURL
+│   │   │   └── totp.js              # TOTP-Secret/-Verify, Backup-Codes (otplib + bcrypt)
 │   │   └── index.js                 # Express App, Port 3001
 │   ├── data/
 │   │   └── visitors.db              # SQLite-Datenbank (NICHT löschen!)
@@ -218,7 +227,7 @@ Node.js Backend (Port 3001)
 │   │   │   ├── AuthContext.jsx
 │   │   │   └── KioskLangContext.jsx  # DE/EN Übersetzungen für Kiosk (separat von Admin-i18n)
 │   │   └── pages/
-│   │       ├── AuditLog.jsx         # Audit-Log & Compliance (superadmin)
+│   │       ├── AuditLog.jsx         # Audit-Log & Compliance (admin)
 │   │       ├── Dashboard.jsx
 │   │       ├── Evacuation.jsx       # Nach Standort gruppiert, druckoptimiert
 │   │       ├── HostLogin.jsx        # Gastgeber-Portal Login (kein Admin-Zugang)
@@ -228,12 +237,13 @@ Node.js Backend (Port 3001)
 │   │       ├── KioskCheckout.jsx
 │   │       ├── KioskManual.jsx
 │   │       ├── KioskStart.jsx       # Mit Sprachschalter DE/EN
-│   │       ├── Login.jsx
+│   │       ├── Login.jsx            # Passwort-Login + zweiter Schritt für 2FA-Code/Backup-Code
 │   │       ├── NotFound.jsx         # 404-Fehlerseite
 │   │       ├── PreRegistration.jsx  # Mit Gruppenregistrierung
 │   │       ├── Reports.jsx
-│   │       ├── Settings.jsx
-│   │       └── Visitors.jsx         # Tabs: Alle / Angekündigt / Aktiv / Verlassen
+│   │       ├── Settings.jsx         # inkl. Tab "Gastgeber-Sync" (AD-Sync) und 2FA-Verwaltung im Passwort-Tab
+│   │       ├── TwoFactorSetup.jsx   # Erzwungene 2FA-Einrichtung (QR-Code + Backup-Codes) für Admins ohne aktives 2FA
+│   │       └── Visitors.jsx         # Tabs: Alle / Angekündigt / Aktiv / Verlassen; Check-in-Formular (VisitorCheckinForm) hier statt im Dashboard
 │   ├── dist/                        # Produktions-Build
 │   └── package.json
 │
@@ -257,8 +267,13 @@ Node.js Backend (Port 3001)
 | name | TEXT | Anzeigename |
 | email | TEXT UNIQUE | Login-E-Mail |
 | password_hash | TEXT | bcrypt Hash (cost 12) |
-| role | TEXT | `superadmin` / `admin` / `receptionist` |
+| role | TEXT | `admin` / `receptionist` (Rolle `superadmin` entfernt, siehe [12.](#12-zugangsdaten--benutzerrollen)) |
 | active | INTEGER | 1 = aktiv, 0 = deaktiviert |
+| failed_login_attempts | INTEGER | Zähler für Account-Lockout, 0 nach erfolgreichem Login |
+| locked_until | DATETIME | Gesetzt nach 5 Fehlversuchen (15 Min. Sperre), sonst NULL |
+| totp_secret | TEXT | Base32-Secret für TOTP, NULL solange 2FA nicht eingerichtet |
+| totp_enabled | INTEGER | 1 = 2FA aktiv und beim Login erforderlich |
+| totp_backup_codes | TEXT | JSON-Array bcrypt-gehashter Einmal-Backup-Codes |
 | created_at | DATETIME | |
 
 #### `user_locations` — Standortzuweisung für Benutzer (many-to-many)
@@ -276,6 +291,11 @@ Node.js Backend (Port 3001)
 | name | TEXT | z.B. "Bremen", "Heidelberg" |
 | address | TEXT | Straße & Hausnummer |
 | city | TEXT | Stadt |
+| country | TEXT | Land (Freitext) |
+| timezone | TEXT | IANA-Zeitzone, Standard `Europe/Berlin` |
+| contact_name | TEXT | Ansprechpartner vor Ort |
+| contact_email | TEXT | |
+| contact_phone | TEXT | |
 | active | INTEGER | |
 
 #### `hosts` — Gastgeber
@@ -288,7 +308,10 @@ Node.js Backend (Port 3001)
 | department | TEXT | Abteilung |
 | location_id | INTEGER | FK → locations |
 | password_hash | TEXT | bcrypt Hash (cost 12) — nur wenn Host-Portal aktiviert |
-| active | INTEGER | Soft-Delete |
+| ldap_dn | TEXT | Distinguished Name aus Active Directory — gesetzt, wenn der Gastgeber per AD-Sync angelegt/aktualisiert wurde (siehe [15b.](#15b-gastgeber-synchronisierung-ad-sync)) |
+| failed_login_attempts | INTEGER | Account-Lockout-Zähler für das Host-Portal-Login |
+| locked_until | DATETIME | Sperrzeitpunkt nach zu vielen Fehlversuchen |
+| active | INTEGER | Soft-Delete (auch durch AD-Sync gesetzt, wenn der AD-Account verschwindet) |
 
 > `password_hash` wird **nicht** über die öffentliche API zurückgegeben.
 
@@ -300,11 +323,12 @@ Node.js Backend (Port 3001)
 | first_name | TEXT | |
 | last_name | TEXT | |
 | email | TEXT | |
-| phone | TEXT | |
 | company | TEXT | |
-| nda_signed | INTEGER | 0 / 1 |
+| nda_signed | INTEGER | 0 / 1 — in der UI mittlerweile als "Datenschutzerklärung unterschrieben" beschriftet (Spaltenname unverändert) |
 | nda_signed_at | DATETIME | |
 | created_at | DATETIME | |
+
+> **Entfernt:** die Spalte `phone` wurde aus `visitors` gestrichen (Check-in-Formular hat kein Telefonfeld mehr) — die Migration löscht die Spalte beim nächsten Serverstart automatisch, falls sie noch existiert.
 
 #### `visits` — Einzelne Besuche
 | Spalte | Typ | Beschreibung |
@@ -312,9 +336,10 @@ Node.js Backend (Port 3001)
 | id | INTEGER PK | |
 | visitor_id | INTEGER | FK → visitors |
 | host_id | INTEGER | FK → hosts |
+| host_name_free | TEXT | Freitext-Gastgebername, wenn kein `host_id` gewählt wurde (Kiosk-Walk-in) |
 | location_id | INTEGER | FK → locations |
 | purpose | TEXT | Besuchszweck |
-| badge_number | TEXT | Eindeutige Badge-Nummer (B-XXXXX) |
+| badge_number | TEXT | Intern generierte Badge-Nummer (`B-XXXXX`) — wird **nicht mehr angezeigt** (kein Badge-PDF, keine E-Mail, kein Kiosk-Screen, keine Evakuierungsliste). Dient ausschließlich als zweiter Schlüssel für den QR-Checkout neben `qr_code` |
 | qr_code | TEXT | QR-Code-Inhalt (bei Kiosk-Check-in via Vorregistrierung = Pre-Reg-QR-Code) |
 | checked_in_at | DATETIME | Eincheck-Zeitstempel |
 | checked_out_at | DATETIME | Auscheck-Zeitstempel (NULL = noch anwesend) |
@@ -361,6 +386,16 @@ Standardwerte: Besprechung, Lieferung, Interview, Wartung, Sonstiges
 | `privacy_policy_enabled` | `true` | Datenschutz-Unterschrift im Kiosk aktivieren |
 | `auto_checkout_enabled` | `true` | Auto-Checkout täglich aktivieren |
 | `auto_checkout_time` | `19:00` | Uhrzeit des Auto-Checkouts (HH:MM) |
+| `ad_ldap_url` | *(leer)* | LDAP-Server-URL für AD-Sync, z.B. `ldaps://ad.abat.de:636` |
+| `ad_bind_dn` | *(leer)* | Bind-DN des Service-Accounts |
+| `ad_bind_password` | *(leer)* | Bind-Passwort (Klartext in der DB — kein Secret-Store vorhanden) |
+| `ad_base_dn` | *(leer)* | Such-Basis, z.B. `ou=abat AG,dc=abat,dc=de` |
+| `ad_filter` | `(&(objectClass=user)(objectCategory=person))` | LDAP-Suchfilter |
+| `ad_sync_enabled` | `false` | Täglichen automatischen Sync (03:00 Uhr) aktivieren |
+| `ad_last_sync_at` | — | Zeitstempel des letzten Sync-Laufs (auch manuell ausgelöst) |
+| `ad_last_sync_result` | — | JSON `{created, updated, deactivated, seen, errors}` des letzten Laufs |
+
+> `printer_enabled` / `printer_ip` / `printer_port` existieren als Settings-Keys (Default `false` / leer / `9100`) und sind über `PUT /settings/system` weiterhin schreibbar, werden aber von keiner Route mehr gelesen — der Etikettendrucker-Service (`services/label-printer.js`) ist nicht mehr verdrahtet (siehe [1.](#1-projektübersicht)).
 
 #### `visit_documents` — Hochgeladene Dokumente & Unterschriften
 | Spalte | Typ | Beschreibung |
@@ -386,9 +421,17 @@ Standardwerte: Besprechung, Lieferung, Interview, Wartung, Sonstiges
 
 | Methode | Pfad | Auth | Beschreibung |
 |---|---|---|---|
-| POST | `/auth/login` | Nein | `{ email, password }` → `{ token, user }` |
+| POST | `/auth/login` | Nein | `{ email, password }` → bei aktivem 2FA `{ requires_2fa: true, pending_token }` (5 Min. gültig), sonst direkt `{ token, user, requires_2fa_setup }` |
+| POST | `/auth/2fa/login-verify` | Nein (pending_token) | `{ pending_token, token }` ODER `{ pending_token, backup_code }` → `{ token, user }` |
+| POST | `/auth/2fa/setup` | Ja | Erzeugt neues TOTP-Secret + QR-Code (`{ secret, otpauth_url, qr }`), noch nicht aktiv |
+| POST | `/auth/2fa/verify-setup` | Ja | `{ token }` bestätigt Setup → aktiviert 2FA, gibt einmalig `backup_codes[]` zurück |
+| POST | `/auth/2fa/disable` | Ja | `{ password }` erforderlich, deaktiviert 2FA für den eigenen Account |
 | GET | `/auth/me` | Ja | Aktueller Benutzer |
 | PUT | `/auth/change-password` | Ja | Passwort ändern |
+
+> **2FA ist für alle `admin`-Konten verpflichtend.** Loggt sich ein Admin ohne aktives 2FA ein, leitet das Frontend (`ProtectedRoute` in `App.jsx`) automatisch und ohne Ausweichmöglichkeit auf `/2fa-setup` um — jede andere Seite bleibt bis zum Abschluss der Einrichtung gesperrt. `receptionist`- und Host-Konten haben kein 2FA.
+>
+> **Account-Lockout:** Nach 5 aufeinanderfolgenden Fehlversuchen (Passwort oder 2FA-Code) wird der Account für 15 Minuten gesperrt (`locked_until` in der DB). Ein Admin kann einen gesperrten Benutzer vorzeitig entsperren, siehe [Benutzer](#benutzer-nur-admin) unten.
 
 ### Dashboard
 
@@ -407,7 +450,7 @@ Standardwerte: Besprechung, Lieferung, Interview, Wartung, Sonstiges
 | GET | `/visitors/active` | Ja | Aktuell anwesend |
 | GET | `/visitors/:id` | Ja | Details + Besuchshistorie |
 | PUT | `/visitors/:id` | Ja | Stammdaten bearbeiten |
-| DELETE | `/visitors/:id` | Ja (superadmin) | Dauerhaft löschen (inkl. Besuche + Dokumente) |
+| DELETE | `/visitors/:id` | Ja (admin) | Dauerhaft löschen (inkl. Besuche + Dokumente) |
 | POST | `/visitors/:id/checkin` | Ja | Erneut einchecken |
 | GET | `/visitors/:id/badge/:visitId` | Ja | Badge als PDF |
 
@@ -428,7 +471,7 @@ Standardwerte: Besprechung, Lieferung, Interview, Wartung, Sonstiges
 | POST | `/preregistrations` | Ja | Einzelne Vorregistrierung + QR per E-Mail |
 | POST | `/preregistrations/batch` | Ja | Gruppenregistrierung (mehrere Gäste) |
 | PUT | `/preregistrations/:id` | Ja | Bearbeiten |
-| DELETE | `/preregistrations/:id` | Ja | Superadmin: dauerhaft löschen; andere: stornieren |
+| DELETE | `/preregistrations/:id` | Ja | Admin: dauerhaft löschen; andere: stornieren |
 | GET | `/preregistrations/qr-image/:qrcode` | **Nein** | QR-Code als PNG-Bild |
 | GET | `/preregistrations/qr/:qrcode` | **Nein** | Kiosk: Infos via QR-Code |
 | POST | `/preregistrations/qr/:qrcode/checkin` | **Nein** | Kiosk: Einchecken via QR |
@@ -442,7 +485,7 @@ Standardwerte: Besprechung, Lieferung, Interview, Wartung, Sonstiges
 | GET | `/hosts/:id` | Ja | Einzelner Gastgeber |
 | POST | `/hosts` | Ja | Erstellen |
 | PUT | `/hosts/:id` | Ja | Bearbeiten |
-| PUT | `/hosts/:id/set-password` | Ja (superadmin) | Portal-Passwort setzen (min. 8 Zeichen) |
+| PUT | `/hosts/:id/set-password` | Ja (admin) | Portal-Passwort setzen (min. 8 Zeichen) |
 | DELETE | `/hosts/:id` | Ja | Soft-Delete |
 
 ### Host-Portal
@@ -455,13 +498,22 @@ Standardwerte: Besprechung, Lieferung, Interview, Wartung, Sonstiges
 | POST | `/host-portal/preregistrations` | Host-Token | Vorregistrierung erstellen + QR per E-Mail (host_id automatisch gesetzt) |
 | PUT | `/host-portal/change-password` | Host-Token | Eigenes Passwort ändern |
 
-### Audit-Log (nur superadmin)
+### Audit-Log (nur admin)
 
 | Methode | Pfad | Beschreibung |
 |---|---|---|
 | GET | `/audit-log/available-dates` | Liste aller Tage mit vorhandenen Log-Dateien |
 | GET | `/audit-log/download?date=YYYY-MM-DD` | Tagesprotokoll als `.log`-Datei herunterladen |
-| GET | `/audit-log/compliance-report?from=&to=` | Compliance-Bericht als CSV (Besuche + Ereignisse) |
+| GET | `/audit-log/compliance-report?from=&to=` | Compliance-Bericht als CSV (Besuche + Ereignisse, ohne Badge-Nummer-Spalte) |
+
+### Gastgeber-Synchronisierung (AD-Sync, nur admin)
+
+| Methode | Pfad | Beschreibung |
+|---|---|---|
+| GET | `/ad-sync/config` | Aktuelle LDAP-Konfiguration (Bind-Passwort maskiert als `••••••••`) |
+| PUT | `/ad-sync/config` | `{ url, bindDn, bindPassword, baseDn, filter, enabled }` speichern — Passwort wird nur überschrieben, wenn ein neuer Wert ≠ `••••••••` gesendet wird |
+| GET | `/ad-sync/status` | Letzter Sync-Zeitpunkt + Ergebnis (`{created, updated, deactivated, seen, errors}`) |
+| POST | `/ad-sync/sync` | Manuellen Sync sofort auslösen (Fehler kommen als `400`, nicht `502`/`503`, damit Cloudflare den Body nicht durch eine generische Fehlerseite ersetzt) |
 
 ### Standorte
 
@@ -482,35 +534,43 @@ Standardwerte: Besprechung, Lieferung, Interview, Wartung, Sonstiges
 | PUT | `/visit-purposes/:id` | Ja | Bearbeiten |
 | DELETE | `/visit-purposes/:id` | Ja | Deaktivieren |
 
-### Benutzer (nur superadmin)
+### Benutzer (nur admin)
 
 | Methode | Pfad | Beschreibung |
 |---|---|---|
-| GET | `/users` | Alle Benutzer inkl. `location_ids[]` |
-| POST | `/users` | Erstellen (mit `location_ids[]`) |
+| GET | `/users` | Alle Benutzer inkl. `location_ids[]`, `failed_login_attempts`, `locked_until`, `totp_enabled` |
+| POST | `/users` | Erstellen (mit `location_ids[]`); `role` muss `admin` oder `receptionist` sein |
 | PUT | `/users/:id` | Bearbeiten (mit `location_ids[]`) |
 | POST | `/users/:id/reset-password` | Passwort zurücksetzen |
-| DELETE | `/users/:id` | Deaktivieren (Soft-Delete) |
+| POST | `/users/:id/unlock` | Account-Lockout vorzeitig aufheben (`failed_login_attempts` = 0, `locked_until` = NULL) |
+| POST | `/users/:id/2fa-reset` | 2FA eines anderen Benutzers zurücksetzen (Recovery, falls Authenticator-App verloren) — Benutzer muss es beim nächsten Login neu einrichten |
+| DELETE | `/users/:id` | Deaktivieren (Soft-Delete); eigenes Konto kann nicht deaktiviert werden |
+| DELETE | `/users/:id/permanent` | Endgültig aus der DB löschen — nur möglich, wenn der Benutzer bereits deaktiviert ist |
 
-### Einstellungen (admin+)
+### Einstellungen (nur admin)
 
 | Methode | Pfad | Auth | Beschreibung |
 |---|---|---|---|
-| GET | `/settings/system` | Ja (admin+) | Alle system_settings |
-| PUT | `/settings/system` | Ja (admin+) | Einstellungen speichern |
-| GET | `/settings/smtp-config` | Ja (admin+) | Aktuelle SMTP-Konfiguration (Passwort maskiert) |
+| GET | `/settings/system` | Ja (admin) | Alle system_settings |
+| PUT | `/settings/system` | Ja (admin) | Einstellungen speichern |
+| GET | `/settings/smtp-config` | Ja (admin) | Aktuelle SMTP-Konfiguration (Passwort maskiert) |
+| PUT | `/settings/smtp-config` | Ja (admin) | SMTP-Konfiguration in der DB speichern |
 | GET | `/settings/privacy-policy` | **Nein** | Datenschutztext + enabled-Flag (für Kiosk) |
-| POST | `/settings/email-test` | Ja (admin+) | Test-E-Mail senden |
-| POST | `/settings/gdpr/cleanup` | Ja (admin+) | GDPR-Bereinigung ausführen |
+| GET | `/settings/ms-sso/status` | **Nein** | `{ available }` — liest **aus `.env`** (`MS_SSO_ENABLED`/`MS_CLIENT_ID`/`MS_CLIENT_SECRET`/`MS_TENANT_ID`), unabhängig von der tatsächlichen SSO-Konfiguration in `system_settings` (siehe Hinweis in [16.](#16-host-portal)) |
+| POST | `/settings/email-test` | Ja (admin) | Test-E-Mail senden |
+| POST | `/settings/gdpr/cleanup` | Ja (admin) | GDPR-Bereinigung ausführen |
 
 ### Berichte
 
-| Methode | Pfad | Beschreibung |
-|---|---|---|
-| GET | `/reports/daily?date=YYYY-MM-DD` | Tagesbericht |
-| GET | `/reports/monthly?year=YYYY&month=MM` | Monatsbericht |
-| GET | `/reports/evacuation` | Evakuierungsliste — nach Standort gruppiert |
-| GET | `/reports/export?from=&to=&format=csv` | CSV-Export Besuchsdaten |
+| Methode | Pfad | Auth | Beschreibung |
+|---|---|---|---|
+| GET | `/reports/daily?date=YYYY-MM-DD` | Ja | Tagesbericht — standortgefiltert für Receptionist |
+| GET | `/reports/monthly?year=YYYY&month=MM` | Ja | Monatsbericht — standortgefiltert für Receptionist |
+| GET | `/reports/evacuation` | Ja | Evakuierungsliste — nach Standort gruppiert, ohne Badge-Nummer |
+| GET | `/reports/export?from=&to=&format=json` | Ja | JSON-Vorschau, für alle Rollen (Receptionist nur eigene Standorte) — Admin kann zusätzlich per `?location_id=` filtern |
+| GET | `/reports/export?from=&to=&format=csv` | Ja (**admin**) | CSV-Download — für `receptionist` `403`, seit CSV-Export im Frontend admin-only ist |
+
+> Alle Berichts-Endpunkte akzeptieren bei Admin optional `?location_id=` zur gezielten Filterung; ohne diesen Parameter sieht der Admin alle Standorte. Die CSV-Spalte "Badge-Nr." wurde entfernt.
 
 ### Dokumenten-Upload & Unterschrift
 
@@ -536,36 +596,44 @@ Standardwerte: Besprechung, Lieferung, Interview, Wartung, Sonstiges
 | `/kiosk/manual` | KioskManual | **Nein** | Walk-in Formular |
 | `/dashboard` | Dashboard | Ja | Kennzahlen, Diagramm, Quick-Check-in |
 | `/visitors` | Besucher | Ja | Tabs: Alle / Angekündigt / Aktiv / Verlassen |
-| `/hosts` | Gastgeber | Ja | inkl. Portal-Passwort setzen (superadmin) |
+| `/hosts` | Gastgeber | Ja | inkl. Portal-Passwort setzen (admin) |
 | `/preregistrations` | Vorregistrierung | Ja | Einzel- und Gruppenregistrierung |
 | `/evacuation` | Evakuierung | Ja | Nach Standort gruppiert, Drucklayout |
-| `/reports` | Berichte | Ja (admin+) | Tages-/Monatsberichte, CSV-Export |
-| `/settings` | Einstellungen | Ja (admin+) | Alle Konfigurations-Tabs |
-| `/audit-log` | Audit-Log & Compliance | Ja (superadmin) | Protokoll-Download, Compliance-Bericht |
+| `/reports` | Berichte | Ja | Tages-/Monatsberichte; Standortfilter + CSV-Export nur admin, receptionist sieht nur eigene Standorte |
+| `/settings` | Einstellungen | Ja (admin) | Alle Konfigurations-Tabs |
+| `/audit-log` | Audit-Log & Compliance | Ja (admin) | Protokoll-Download, Compliance-Bericht |
+| `/2fa-setup` | 2FA-Einrichtung | Ja | Erzwungen für `admin`-Konten ohne aktives 2FA — keine andere Seite erreichbar bis abgeschlossen |
 | `*` | NotFound | — | 404-Fehlerseite |
 
 ### Einstellungs-Tabs (Settings.jsx)
 
 | Tab | Inhalt | Rolle |
 |---|---|---|
-| Standorte | CRUD Standorte | admin+ |
-| Besuchszwecke | CRUD Besuchszwecke | admin+ |
-| Benutzer | CRUD Benutzer + Standortzuweisung | superadmin |
-| Auto-Checkout | Aktivieren/Deaktivieren + Uhrzeit einstellen | superadmin |
-| Datenschutz | GDPR Aufbewahrungsdauer, Bereinigung, E-Mail-Bestätigung | admin+ |
-| E-Mail | SMTP-Konfiguration (read-only), Verschlüsselung, Test-E-Mail | admin+ |
-| Passwort ändern | Eigenes Passwort ändern | alle |
+| Standorte | CRUD Standorte (inkl. Land, Zeitzone, Vor-Ort-Kontakt), Suchfilter ab 5 Einträgen | alle mit Zugriff auf Einstellungen |
+| Besuchszwecke | CRUD Besuchszwecke | alle mit Zugriff auf Einstellungen |
+| Benutzer | CRUD Benutzer + Standortzuweisung, Account-Entsperrung, 2FA-Reset, endgültiges Löschen | admin |
+| Auto-Checkout | Aktivieren/Deaktivieren + Uhrzeit einstellen | admin |
+| Gastgeber-Sync | AD-Sync-Konfiguration (LDAP-URL, Bind-DN/-Passwort, Base-DN, Filter), manueller Sync-Trigger | admin |
+| Datenschutz | GDPR Aufbewahrungsdauer, Bereinigung, E-Mail-Bestätigung | alle mit Zugriff auf Einstellungen |
+| E-Mail | SMTP-Konfiguration, Verschlüsselung, Test-E-Mail — nur `admin` kann bearbeiten, andere sehen read-only | alle mit Zugriff auf Einstellungen |
+| Passwort ändern | Eigenes Passwort ändern + 2FA einrichten/deaktivieren | alle |
+
+> `/settings` und `/audit-log` sind in der Sidebar nur für `admin` sichtbar — `receptionist` hat keinen Zugriff auf Einstellungen.
 
 ### Aktionsrechte nach Rolle
 
-| Aktion | superadmin | admin | receptionist |
-|---|---|---|---|
-| Besucher dauerhaft löschen | ✓ | ✗ | ✗ |
-| Vorregistrierung dauerhaft löschen | ✓ | ✗ | ✗ |
-| Vorregistrierung stornieren | ✓ | ✓ | ✓ |
-| Gastgeber-Portal-Passwort setzen | ✓ | ✗ | ✗ |
-| Audit-Log & Compliance-Bericht | ✓ | ✗ | ✗ |
-| Auto-Checkout konfigurieren | ✓ | ✗ | ✗ |
+| Aktion | admin | receptionist |
+|---|---|---|
+| Besucher dauerhaft löschen | ✓ | ✗ |
+| Vorregistrierung dauerhaft löschen | ✓ | ✗ |
+| Vorregistrierung stornieren | ✓ | ✓ |
+| Gastgeber-Portal-Passwort setzen | ✓ | ✗ |
+| Audit-Log & Compliance-Bericht | ✓ | ✗ |
+| Auto-Checkout konfigurieren | ✓ | ✗ |
+| Gastgeber-Sync (AD) konfigurieren | ✓ | ✗ |
+| Benutzer verwalten, entsperren, 2FA zurücksetzen | ✓ | ✗ |
+| Berichte als CSV exportieren | ✓ | ✗ (nur JSON-Vorschau, eigene Standorte) |
+| 2FA-Pflicht beim Login | ✓ (verpflichtend) | — (kein 2FA) |
 
 ---
 
@@ -595,7 +663,7 @@ scan → confirm → privacy → success
 | **scan** | QR-Code per Kamera scannen **oder** abat-ID eingeben (`ABAT-` vorausgefüllt, 8 Ziffern) |
 | **confirm** | Vorregistrierungsdaten anzeigen und ggf. korrigieren (Vorname, Nachname, Unternehmen) |
 | **privacy** | Scrollbarer Datenschutztext + Unterschriftsfeld; Button erst nach Unterschrift aktiv |
-| **success** | abat-ID groß angezeigt, Gastgeber, Badge-Nr.; automatischer Rücksprung nach 6 Sekunden |
+| **success** | abat-ID groß angezeigt, Gastgeber; automatischer Rücksprung nach 6 Sekunden (Badge-Nr. wird nicht mehr angezeigt) |
 
 ### Check-out (`/kiosk/checkout`) — 3 Tabs
 
@@ -612,8 +680,8 @@ Formularfelder: Vorname *, Nachname *, Gastgeber *, Unternehmen, Besuchszweck, N
 ### QR-Checkout — Unterstützte Codes
 
 `POST /visits/checkout-by-qr` akzeptiert zwei QR-Code-Typen:
-- **Badge-QR** (aus dem Etikettendrucker): enthält `badge_number` (z.B. `B-12345`) → Suche via `visits.badge_number`
-- **Vorregistrierungs-QR** (aus der Einladungs-E-Mail): enthält `PRE-xxx-yyy` → Suche via `visits.qr_code` (wird beim Check-in gespeichert)
+- **Badge-QR:** enthält `badge_number` (z.B. `B-12345`) → Suche via `visits.badge_number`. Der Code wird intern weiterhin bei jedem Check-in erzeugt, aber seit der Entfernung der Badge-Nummer aus PDF/Etikett/Kiosk-Anzeige gibt es aktuell keine UI mehr, die diesen Code für Besucher sichtbar macht — der Pfad bleibt aus Kompatibilitätsgründen im Backend erhalten.
+- **Vorregistrierungs-QR** (aus der Einladungs-E-Mail): enthält `PRE-xxx-yyy` → Suche via `visits.qr_code` (wird beim Check-in gespeichert). Dies ist der einzige QR-Code, der Besuchern aktuell tatsächlich angezeigt/zugestellt wird.
 
 ### QR-Scanner — Technische Besonderheit
 
@@ -652,7 +720,7 @@ translation
 ├── roles.*         Rollenbezeichnungen
 ├── login.*         Login-Seite (Admin + Gastgeber)
 ├── layout.*        Header-Elemente
-├── dashboard.*     Dashboard & Schnell-Check-in
+├── dashboard.*     Dashboard (Kennzahlen, Diagramm, letzte Besuche)
 ├── visitors.*      Besucherverwaltung (Tabs, Formular, Tabelle)
 ├── hosts.*         Gastgeberverwaltung
 ├── preregistrations.* Vorregistrierungen
@@ -718,63 +786,68 @@ Ablauf: Besucher einchecken → Dokument hochladen (optional) → Unterschrift l
 
 ### Rollen & Berechtigungen
 
-| Berechtigung | superadmin | admin | receptionist | host |
-|---|---|---|---|---|
-| Dashboard | ✓ | ✓ | ✓ | ✗ |
-| Besucher verwalten | ✓ | ✓ | ✓ (standortgef.) | ✗ |
-| Besucher löschen | ✓ | ✗ | ✗ | ✗ |
-| Gastgeber verwalten | ✓ | ✓ | ✓ | ✗ |
-| Vorregistrierungen | ✓ | ✓ | ✓ | ✓ (nur eigene) |
-| Evakuierungsliste | ✓ | ✓ | ✓ (standortgef.) | ✗ |
-| Berichte | ✓ | ✓ | ✗ | ✗ |
-| Einstellungen | ✓ | ✓ | ✗ | ✗ |
-| Benutzer verwalten | ✓ | ✗ | ✗ | ✗ |
-| Auto-Checkout konfigurieren | ✓ | ✗ | ✗ | ✗ |
-| Audit-Log & Compliance | ✓ | ✗ | ✗ | ✗ |
-| Host-Portal | ✗ | ✗ | ✗ | ✓ |
+Die Rolle `superadmin` wurde entfernt und beim Upgrade automatisch zu `admin` migriert (`UPDATE users SET role = 'admin' WHERE role = 'superadmin'` läuft bei jedem Serverstart in `database.js`, ist danach ein No-Op). Es gibt jetzt nur noch zwei Admin-Panel-Rollen plus die separate Host-Rolle:
+
+| Berechtigung | admin | receptionist | host |
+|---|---|---|---|
+| Dashboard | ✓ | ✓ | ✗ |
+| Besucher verwalten | ✓ | ✓ (standortgef.) | ✗ |
+| Besucher löschen | ✓ | ✗ | ✗ |
+| Gastgeber verwalten | ✓ | ✓ | ✗ |
+| Vorregistrierungen | ✓ | ✓ | ✓ (nur eigene) |
+| Evakuierungsliste | ✓ | ✓ (standortgef.) | ✗ |
+| Berichte (JSON-Vorschau) | ✓ | ✓ (nur eigene Standorte) | ✗ |
+| Berichte als CSV exportieren | ✓ | ✗ | ✗ |
+| Einstellungen | ✓ | ✗ | ✗ |
+| Benutzer verwalten / entsperren / 2FA-Reset | ✓ | ✗ | ✗ |
+| Auto-Checkout konfigurieren | ✓ | ✗ | ✗ |
+| Gastgeber-Sync (AD) konfigurieren | ✓ | ✗ | ✗ |
+| Audit-Log & Compliance | ✓ | ✗ | ✗ |
+| 2FA beim Login | ✓ (verpflichtend) | ✗ (kein 2FA) | ✗ (kein 2FA) |
+| Host-Portal | ✗ | ✗ | ✓ |
 
 ### Host-Accounts
 
-Gastgeber-Accounts werden in der `hosts`-Tabelle verwaltet. Ein Portal-Passwort wird vom Superadmin unter **Gastgeber → Schlüssel-Icon** gesetzt (min. 8 Zeichen). Das Login erfolgt unter `/host/login` mit der E-Mail-Adresse des Gastgebers.
+Gastgeber-Accounts werden in der `hosts`-Tabelle verwaltet — entweder manuell oder automatisch per [AD-Sync](#15b-gastgeber-synchronisierung-ad-sync). Ein Portal-Passwort wird von einem Admin unter **Gastgeber → Schlüssel-Icon** gesetzt (min. 8 Zeichen). Das Login erfolgt unter `/host/login` mit der E-Mail-Adresse des Gastgebers, optional per Microsoft-SSO-Button (siehe Hinweis in [16.](#16-host-portal)).
 
 ---
 
-## 12. Standortbasierte Zugriffskontrolle
+## 12a. Standortbasierte Zugriffskontrolle
 
 Benutzer können auf bestimmte Standorte beschränkt werden.
 
 1. In **Einstellungen → Benutzer** werden Standorte zugewiesen
 2. Zuordnung wird in `user_locations` gespeichert
 3. Auth-Middleware lädt `location_ids[]` bei jedem Request
-4. Gefilterte Endpunkte: `GET /visitors`, `GET /visitors/active`, `GET /reports/evacuation`
+4. Gefilterte Endpunkte: `GET /visitors`, `GET /visitors/active`, `GET /reports/evacuation`, `GET /reports/daily`, `GET /reports/monthly`, `GET /reports/export`
 
 | Situation | Verhalten |
 |---|---|
-| superadmin / admin | Immer alle Standorte |
+| admin | Immer alle Standorte, kann zusätzlich per `?location_id=` gezielt filtern |
 | Receptionist mit 0 Standorten | Alle Standorte sichtbar |
 | Receptionist mit 1+ Standorten | Nur zugewiesene Standorte |
 
 ---
 
-## 13. Schnell-Check-in am Empfang
+## 13. Check-in am Empfang (Dashboard/Visitors)
 
-Das Check-in-Modal im Dashboard hat zwei Tabs:
+> **Hinweis:** Das frühere Schnell-Check-in-Modal im Dashboard (automatische Vorschläge aus heutigen Vorregistrierungen, 1–2-Klick-Check-in) wurde entfernt. Das Dashboard zeigt seit diesem Umbau nur noch Kennzahlen, Diagramm und die Liste der letzten Besuche (mit Check-out-Aktion) — kein Check-in-Formular mehr.
 
-| Tab | Beschreibung |
-|---|---|
-| **Schnell-Check-in** | Zeigt automatisch alle heutigen Vorregistrierungen; alternativ Name/Firma eingeben → bekannte Besucher erscheinen sofort |
-| **Neuer Besucher** | Vollständiges Formular für Erstbesucher ohne Vorregistrierung |
+Das manuelle Einchecken neuer Besucher erfolgt jetzt ausschließlich über **Besucher → Neuer Besucher** (`Visitors.jsx`, Formular-Komponente `VisitorCheckinForm`):
 
-### Ablauf Schnell-Check-in
+| Feld | Pflicht | Hinweis |
+|---|---|---|
+| Vorname / Nachname | ✅ | |
+| E-Mail | — | Kein Telefonfeld mehr (Spalte `visitors.phone` wurde entfernt) |
+| Unternehmen | — | |
+| Gastgeber | ✅ | Aus Liste oder manuell (Freitext) |
+| Besuchszweck | — | Aus konfigurierten Besuchszwecken |
+| Notizen | — | |
+| Datenschutzerklärung unterschrieben | — | Checkbox (Feldname in der DB weiterhin `nda_signed`) |
 
-1. Empfang öffnet Dashboard → "Check-in"
-2. Heutige Vorregistrierungen erscheinen sofort → ein Klick
-3. Mini-Formular: nur Host + Zweck auswählen (vorausgefüllt aus Vorregistrierung)
-4. "Jetzt einchecken" → fertig
+**Backend:** `POST /visitors` (öffentlich, Kiosk-kompatibel) legt bei Bedarf einen neuen `visitors`-Datensatz an (Dedupe per E-Mail, dann Name) und erstellt den `visits`-Eintrag. Bereits bekannte Besucher, die erneut einchecken, nutzen `POST /visitors/:id/checkin`.
 
-Für bekannte Besucher ohne Vorregistrierung: Name tippen (ab 2 Zeichen Live-Suche) → Besucher auswählen → gleicher Mini-Formular-Flow.
-
-**Backend:** Bekannte Besucher nutzen `POST /visitors/:id/checkin`. Erstbesucher aus Vorregistrierungen werden automatisch in der Datenbank angelegt (`POST /visitors`).
+Vorregistrierte Besucher werden weiterhin regulär über den Kiosk (QR-Code oder abat-ID) oder über **Vorregistrierungen** eingecheckt — nur der separate Schnell-Check-in-Shortcut im Dashboard existiert nicht mehr.
 
 ---
 
@@ -786,7 +859,7 @@ Für bekannte Besucher ohne Vorregistrierung: Name tippen (ab 2 Zeichen Live-Suc
 |---|---|---|
 | Vorregistrierung erstellt | Besucher | QR-Code (CID-Anhang), abat-ID, Besuchsdetails |
 | Check-in | Gastgeber | Benachrichtigung: Besucher eingetroffen |
-| Check-in (`visitor_email_confirmation = true`) | Besucher | Bestätigung mit Datum, Zeit, Gastgeber, Badge-Nr. |
+| Check-in (`visitor_email_confirmation = true`) | Besucher | Bestätigung mit Datum, Zeit, Gastgeber (ohne Badge-Nr.) |
 
 ### SMTP-Konfiguration
 
@@ -815,7 +888,7 @@ Alle Besucher, die sich bis zur konfigurierten Uhrzeit nicht ausgecheckt haben, 
 
 ### Konfiguration
 
-**Einstellungen → Auto-Checkout (superadmin):**
+**Einstellungen → Auto-Checkout (admin):**
 
 | Einstellung | Key in `system_settings` | Beschreibung |
 |---|---|---|
@@ -846,6 +919,44 @@ Alle `pending`-Vorregistrierungen, deren `expected_date` in der Vergangenheit li
 
 ---
 
+## 15b. Gastgeber-Synchronisierung (AD-Sync)
+
+Gastgeber können automatisch aus dem Active Directory / LDAP-Verzeichnis der Firma übernommen werden, statt jeden Gastgeber manuell im Admin-Panel anzulegen.
+
+### Konfiguration (Einstellungen → Gastgeber-Sync, nur admin)
+
+| Feld | Beschreibung |
+|---|---|
+| LDAP-Server-URL | z.B. `ldaps://ad.abat.de:636` |
+| Bind-DN | Service-Account für den LDAP-Bind, z.B. `cn=svc-visitormgmt,ou=Service Accounts,dc=abat,dc=de` |
+| Bind-Passwort | Wird beim Speichern nur überschrieben, wenn ein neuer Wert eingegeben wird (Anzeige sonst als `••••••••`) |
+| Base-DN | Such-Basis, z.B. `ou=abat AG,dc=abat,dc=de` |
+| LDAP-Filter | Standard `(&(objectClass=user)(objectCategory=person))` — über Base-DN/Filter auf die gewünschte OU einschränken |
+| Automatischer täglicher Sync | Ein/Aus — bei Aktivierung läuft der Sync jeden Tag um **03:00 Uhr** |
+
+Die gesamte Konfiguration liegt in `system_settings` (Keys `ad_*`, siehe [Abschnitt 5](#5-datenbank)) — es sind **keine** `.env`-Variablen nötig.
+
+### Ablauf eines Sync-Laufs (`backend/src/services/ad-sync.js`)
+
+1. LDAP-Bind mit Bind-DN/-Passwort (`ldapts`)
+2. Suche unter Base-DN mit dem konfigurierten Filter, Attribute `cn`, `displayName`, `mail`, `telephoneNumber`, `department`
+3. Für jeden Treffer mit Name **und** E-Mail: bestehenden Host anhand `hosts.ldap_dn` (= LDAP-DN) suchen
+   - Gefunden → `name`, `email`, `phone`, `department` aktualisieren, `active = 1`
+   - Nicht gefunden → neuer Host mit `ldap_dn` gesetzt
+   - Treffer ohne Name/E-Mail werden übersprungen und im Ergebnis als Fehler aufgelistet
+4. Hosts, die früher per AD-Sync angelegt wurden (`ldap_dn IS NOT NULL`), aber im aktuellen Suchergebnis fehlen, werden **soft-deaktiviert** (`active = 0`) — z.B. wenn ein Mitarbeiter das Unternehmen verlässt
+5. Ergebnis (`created`, `updated`, `deactivated`, `seen`, `errors`) wird zusammen mit dem Zeitstempel in `system_settings` (`ad_last_sync_at`, `ad_last_sync_result`) gespeichert
+
+### Manueller Sync
+
+**Einstellungen → Gastgeber-Sync → "Jetzt synchronisieren"** löst `POST /ad-sync/sync` sofort aus, unabhängig vom täglichen Zeitplan. Ergebnis und eventuelle Fehler (z.B. Bind-Fehler, falscher Filter) werden direkt im UI angezeigt.
+
+### Manuell angelegte Hosts bleiben unberührt
+
+Hosts ohne `ldap_dn` (manuell im Admin-Panel angelegt) werden vom Sync weder verändert noch deaktiviert — der Abgleich betrifft ausschließlich Hosts, die selbst aus dem AD stammen.
+
+---
+
 ## 16. Host-Portal
 
 Gastgeber erhalten Zugang zu einem separaten Portal unter `/host/login`, ohne dass sie Admin-Zugang benötigen.
@@ -870,10 +981,20 @@ Gastgeber erhalten Zugang zu einem separaten Portal unter `/host/login`, ohne da
 - **Middleware:** `authenticateHost()` in `routes/host-portal.js` prüft `type === 'host'`
 - **Link im Admin-Header:** Neben "Kiosk öffnen" — öffnet `/host` in neuem Tab
 - **Responsive:** Cards (`sm:hidden`) + Tabellen (`hidden sm:block`) + Bottom-Nav (`sm:hidden fixed bottom-0`)
+- **Account-Lockout:** Wie beim Admin-Login sperrt das Host-Portal einen Account nach 5 Fehlversuchen für 15 Minuten (`hosts.failed_login_attempts` / `locked_until`)
+
+### ⚠️ Microsoft SSO — aktuell nicht funktionsfähig ohne Zusatzarbeit
+
+Der "Mit Microsoft anmelden"-Button auf `/host/login` und der komplette OAuth-Redirect-Flow (`GET /host-portal/auth/microsoft`) sind implementiert, aber **zwei unterschiedliche Konfigurationsquellen sind nicht miteinander verbunden**:
+
+- Der Button wird nur eingeblendet, wenn `GET /settings/ms-sso/status` `available: true` liefert — dieser Endpunkt liest die Variablen `MS_SSO_ENABLED` / `MS_CLIENT_ID` / `MS_CLIENT_SECRET` / `MS_TENANT_ID` **aus der `.env`**.
+- Der eigentliche Login-Flow in `routes/host-portal.js` (`getMsSsoConfig()`) liest seine Konfiguration jedoch **aus `system_settings`** (Keys `ms_sso_enabled`, `ms_client_id`, `ms_client_secret`, `ms_tenant_id`) — und es gibt **keine** Admin-UI oder Route, die diese Keys beschreibt.
+
+Ergebnis: Werden die `.env`-Variablen gesetzt, erscheint der Button — ein Klick landet aber immer bei `sso_not_configured`, weil die DB-Werte leer bleiben. Vor einem produktiven Einsatz von Microsoft-SSO muss entweder (a) ein Settings-Endpunkt ergänzt werden, der `ms_*` in `system_settings` schreibt, oder (b) `getMsSsoConfig()` in `host-portal.js` so geändert werden, dass er wie der Status-Endpunkt aus `process.env` liest.
 
 ### Portal-Passwort einrichten
 
-1. Superadmin öffnet **Gastgeber** im Admin-Panel
+1. Admin öffnet **Gastgeber** im Admin-Panel
 2. Klick auf das Schlüssel-Icon in der Zeile des Gastgebers
 3. Passwort eingeben (min. 8 Zeichen) und bestätigen
 4. Gastgeber kann sich nun unter `/host/login` mit E-Mail + Passwort anmelden
@@ -888,14 +1009,25 @@ Alle sicherheitsrelevanten Ereignisse werden automatisch protokolliert:
 
 | Ereignis | Wann |
 |---|---|
-| `LOGIN` | Erfolgreicher Admin- oder Host-Login |
-| `LOGIN_FAILED` | Fehlgeschlagener Login-Versuch |
+| `LOGIN` | Erfolgreicher Admin-Login (ohne 2FA bzw. nach bestandener 2FA) |
+| `LOGIN_FAILED` | Fehlgeschlagener Login-Versuch (Passwort) |
+| `LOGIN_BLOCKED` | Login-Versuch auf gesperrten Account |
+| `LOGIN_2FA_PENDING` | Passwort korrekt, wartet auf 2FA-Code |
+| `LOGIN_2FA` | 2FA-Code erfolgreich bestätigt |
+| `LOGIN_2FA_FAILED` | Falscher 2FA-Code oder Backup-Code |
+| `LOGIN_2FA_BACKUP` | Login per Backup-Code (statt Authenticator-App) |
+| `2FA_AKTIVIERT` | Benutzer hat 2FA erfolgreich eingerichtet |
+| `2FA_DEAKTIVIERT` | Benutzer hat 2FA deaktiviert |
 | `CHECKIN` | Besucher eingecheckt |
 | `CHECKOUT` | Besucher ausgecheckt |
-| `AUTO_CHECKOUT` | Automatischer Checkout um 19:00 |
+| `AUTO_CHECKOUT` | Automatischer Checkout um konfigurierte Uhrzeit |
 | `VORREGISTRIERUNG` | Vorregistrierung erstellt |
 | `VORREGISTRIERUNG_GELÖSCHT` | Vorregistrierung dauerhaft gelöscht |
 | `VISITOR_GELÖSCHT` | Besucher-Datensatz dauerhaft gelöscht |
+| `AD_SYNC` | AD-Sync (geplant oder manuell) erfolgreich abgeschlossen |
+| `AD_SYNC_FEHLER` | AD-Sync fehlgeschlagen (z.B. Bind-Fehler) |
+
+> `LOGIN_2FA_*`- und `2FA_*`-Ereignisse betreffen ausschließlich Admin-Logins (`users`-Tabelle) — das Host-Portal hat kein 2FA.
 
 ### Dateiformat
 
@@ -906,7 +1038,7 @@ Alle sicherheitsrelevanten Ereignisse werden automatisch protokolliert:
 
 ### Zugang im Admin-Panel
 
-Nur für Superadmin unter `/audit-log`:
+Nur für admin unter `/audit-log`:
 
 - **Tagesprotokoll herunterladen:** Liste aller verfügbaren Tage, Download als `.log`-Rohdatei
 - **Compliance-Bericht:** CSV-Download für einen Zeitraum mit:
@@ -929,8 +1061,21 @@ Nur für Superadmin unter `/audit-log`:
 
 ### Brute-Force-Schutz
 
-Rate-Limiting auf Login-Endpunkten: max. **20 Versuche pro 15 Minuten** pro IP-Adresse.  
-Betrifft: `POST /auth/login` und `POST /host-portal/login`.
+Zwei unabhängige Schichten:
+
+1. **IP-basiertes Rate-Limiting** (`express-rate-limit`): max. **20 Versuche pro 15 Minuten** pro IP-Adresse auf `POST /auth/login` und `POST /host-portal/login`.
+2. **Account-basierter Lockout** (DB-gestützt, unabhängig von der IP): Nach **5 fehlgeschlagenen Versuchen** (falsches Passwort oder falscher 2FA-/Backup-Code) wird der jeweilige Account für **15 Minuten** gesperrt (`failed_login_attempts` / `locked_until` in `users` bzw. `hosts`). Der Zähler wird bei jedem erfolgreichen Login zurückgesetzt. Ein Admin kann eine Sperre vorzeitig über `POST /users/:id/unlock` aufheben.
+
+### Zwei-Faktor-Authentifizierung (2FA / TOTP)
+
+- **Verpflichtend für die Rolle `admin`** — beim ersten Login ohne aktives 2FA leitet das Frontend zwingend auf `/2fa-setup` um, jede andere Seite bleibt gesperrt (`ProtectedRoute` in `App.jsx`, serverseitig zusätzlich über `requires_2fa_setup` im Login-Response signalisiert).
+- **Implementierung:** `otplib` (`backend/src/services/totp.js`), Zeitfenster `window: 2` (±2 Schritte = ±60s Toleranz für Uhrenabweichung/Tippzeit)
+- **Secret & QR-Code:** `POST /auth/2fa/setup` erzeugt ein neues Base32-Secret und einen `otpauth://`-QR-Code (per `qrcode`-Service) zum Scannen mit einer Authenticator-App
+- **Backup-Codes:** 10 Einmal-Codes (je 10 Hex-Zeichen) werden bei `POST /auth/2fa/verify-setup` erzeugt, als bcrypt-Hashes gespeichert und **nur einmal im Klartext** an den Client zurückgegeben — der Benutzer muss sie sofort sichern
+- **Login-Flow:** `POST /auth/login` gibt bei aktivem 2FA statt eines Tokens `{ requires_2fa: true, pending_token }` zurück (`pending_token` 5 Min. gültig); `POST /auth/2fa/login-verify` tauscht Code oder Backup-Code gegen das finale Session-JWT
+- **Deaktivieren:** `POST /auth/2fa/disable` erfordert das aktuelle Passwort
+- **Recovery:** Verliert ein Admin den Zugriff auf Authenticator-App **und** Backup-Codes, kann ein anderer Admin über **Einstellungen → Benutzer** (`POST /users/:id/2fa-reset`) das 2FA des betroffenen Kontos zurücksetzen — beim nächsten Login muss es neu eingerichtet werden
+- `receptionist`- und Host-Konten haben kein 2FA
 
 ### Dateigeschützte Uploads
 
@@ -1038,17 +1183,17 @@ Besucher, deren letzter Check-in älter als N Tage und die keinen aktiven Visit 
 first_name  → '[GELÖSCHT]'
 last_name   → '[GELÖSCHT]'
 email       → NULL
-phone       → NULL
 company     → NULL
+photo_path  → NULL
 ```
 
-Visit-Statistiken (Datum, Uhrzeit, Standort, Badge-Nr.) bleiben erhalten.
+Visit-Statistiken (Datum, Uhrzeit, Standort) bleiben erhalten. Die Spalte `phone` wurde aus `visitors` entfernt und ist daher auch aus der Bereinigungs-Query verschwunden.
 
 **Manuelle Auslösung:** Einstellungen → Datenschutz → "Jetzt bereinigen"
 
-### Superadmin-Löschrechte
+### Admin-Löschrechte
 
-Superadmins können Besucher und Vorregistrierungen dauerhaft aus der Datenbank löschen (nicht nur anonymisieren). Jede Löschung wird im Audit-Log protokolliert.
+Admins können Besucher, Vorregistrierungen und (bereits deaktivierte) Benutzer dauerhaft aus der Datenbank löschen (nicht nur anonymisieren/deaktivieren). Jede Löschung wird im Audit-Log protokolliert.
 
 ---
 
@@ -1145,12 +1290,12 @@ MS_TENANT_ID=
 | `SMTP_SECURITY` | Nein | `starttls` / `ssl` / `none` (DB-Wert hat Vorrang) |
 | `FROM_EMAIL` | Nein | Absender-Adresse |
 | `COMPANY_NAME` | Nein | Firmenname (in Mails und Badge) |
-| `MS_SSO_ENABLED` | Nein | `true` aktiviert den "Mit Microsoft anmelden"-Button im Host-Portal |
-| `MS_CLIENT_ID` | Nein | Azure App-Registrierung: Application (client) ID |
-| `MS_CLIENT_SECRET` | Nein | Azure App-Registrierung: Client Secret |
-| `MS_TENANT_ID` | Nein | Azure Directory (tenant) ID |
+| `MS_SSO_ENABLED` | Nein | Steuert nur, ob der "Mit Microsoft anmelden"-Button im Host-Portal eingeblendet wird — **nicht** den eigentlichen Login-Flow, siehe Warnhinweis unten |
+| `MS_CLIENT_ID` | Nein | Nur für die Button-Sichtbarkeit relevant (s.u.) |
+| `MS_CLIENT_SECRET` | Nein | Nur für die Button-Sichtbarkeit relevant (s.u.) |
+| `MS_TENANT_ID` | Nein | Nur für die Button-Sichtbarkeit relevant (s.u.) |
 
-> **Hinweis MS SSO:** Nach Änderung der `MS_SSO_*`-Variablen muss der Backend-Prozess neu gestartet werden: `pm2 restart visitor-mgmt --update-env`
+> **⚠️ MS SSO ist derzeit nicht funktionsfähig ohne Zusatzarbeit:** Die `MS_SSO_*`-Variablen steuern ausschließlich, ob der Button auf `/host/login` angezeigt wird. Der tatsächliche OAuth-Flow in `host-portal.js` liest seine Konfiguration stattdessen aus `system_settings` (`ms_sso_enabled`, `ms_client_id`, `ms_client_secret`, `ms_tenant_id`) — dafür existiert aktuell keine Admin-UI. Details und Lösungsvorschlag siehe [Abschnitt 16](#16-host-portal). 2FA (für Admins) und AD-Sync (für Gastgeber) benötigen dagegen **keine** zusätzlichen `.env`-Variablen — beide sind vollständig über die Admin-UI (`system_settings`) konfigurierbar.
 
 ---
 
@@ -1245,14 +1390,38 @@ Anschließend Hard-Reload im Browser: `Ctrl+Shift+R`.
 
 ```bash
 sqlite3 /opt/visitor-mgmt/backend/data/visitors.db \
-  "SELECT id, name, email, role, active FROM users;"
+  "SELECT id, name, email, role, active, failed_login_attempts, locked_until, totp_enabled FROM users;"
 ```
 
 Nach Änderung des JWT-Secrets müssen sich alle Nutzer neu einloggen.
 
+**Account gesperrt** (`locked_until` gesetzt, Fehlermeldung "Account gesperrt..."): Nach 5 Fehlversuchen wird 15 Minuten gesperrt. Ein anderer Admin kann in **Einstellungen → Benutzer** vorzeitig entsperren, oder direkt per SQL:
+
+```bash
+sqlite3 /opt/visitor-mgmt/backend/data/visitors.db \
+  "UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE email = 'admin@firma.de';"
+```
+
+**2FA-Code wird nicht akzeptiert / Zugriff auf Authenticator-App verloren:** Ein anderer Admin kann das 2FA des betroffenen Kontos über **Einstellungen → Benutzer** zurücksetzen (2FA muss danach neu eingerichtet werden). Ohne zweiten Admin-Zugang direkt per SQL:
+
+```bash
+sqlite3 /opt/visitor-mgmt/backend/data/visitors.db \
+  "UPDATE users SET totp_secret = NULL, totp_enabled = 0, totp_backup_codes = NULL WHERE email = 'admin@firma.de';"
+```
+
+> Da 2FA für `admin`-Konten verpflichtend ist, wird beim nächsten Login sofort wieder die Einrichtung (`/2fa-setup`) erzwungen.
+
 ### Benutzer sieht falsche Standortdaten
 
 Standortzuweisungen in **Einstellungen → Benutzer** prüfen. Kein Eintrag = alle Standorte sichtbar.
+
+### AD-Sync (Gastgeber-Synchronisierung) schlägt fehl
+
+```bash
+pm2 logs visitor-mgmt --lines 200 --nostream | grep ad-sync
+```
+
+Häufige Ursachen: falscher Bind-DN/-Passwort (LDAP-Bind-Fehler), Base-DN/Filter treffen keine Einträge, Netzwerk-/Firewall-Sperre zum AD-Server (Port meist 636 für LDAPS bzw. 389 für unverschlüsseltes LDAP), Zertifikatsproblem bei `ldaps://`. Über **Einstellungen → Gastgeber-Sync → Jetzt synchronisieren** wird die Fehlermeldung direkt im UI angezeigt (Backend antwortet bewusst mit `400`, nicht `502`, damit Cloudflare den Fehlertext nicht durch eine generische Seite ersetzt).
 
 ### SSL-Fehler
 

@@ -4,10 +4,10 @@ const db = require('../db/database');
 const { authenticate, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
-const superadmin = [authenticate, requireRole(['superadmin'])];
+const adminOnly = [authenticate, requireRole(['admin'])];
 
 function getUserWithLocations(id) {
-  const user = db.prepare('SELECT id, name, email, role, active, created_at FROM users WHERE id = ?').get(id);
+  const user = db.prepare('SELECT id, name, email, role, active, created_at, totp_enabled FROM users WHERE id = ?').get(id);
   if (!user) return null;
   const locs = db.prepare('SELECT location_id FROM user_locations WHERE user_id = ?').all(id);
   user.location_ids = locs.map(r => r.location_id);
@@ -23,14 +23,14 @@ function setUserLocations(userId, locationIds) {
 }
 
 // POST /:id/unlock — reset lockout
-router.post('/:id/unlock', ...superadmin, (req, res) => {
+router.post('/:id/unlock', ...adminOnly, (req, res) => {
   db.prepare('UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE id = ?').run(req.params.id);
   res.json({ message: 'Account entsperrt' });
 });
 
 // GET /
-router.get('/', ...superadmin, (req, res) => {
-  const rows = db.prepare('SELECT id, name, email, role, active, created_at, failed_login_attempts, locked_until FROM users ORDER BY name ASC').all();
+router.get('/', ...adminOnly, (req, res) => {
+  const rows = db.prepare('SELECT id, name, email, role, active, created_at, failed_login_attempts, locked_until, totp_enabled FROM users ORDER BY name ASC').all();
   const locMap = {};
   db.prepare('SELECT user_id, location_id FROM user_locations').all().forEach(r => {
     if (!locMap[r.user_id]) locMap[r.user_id] = [];
@@ -41,11 +41,11 @@ router.get('/', ...superadmin, (req, res) => {
 });
 
 // POST /
-router.post('/', ...superadmin, async (req, res) => {
+router.post('/', ...adminOnly, async (req, res) => {
   const { name, email, password, role, location_ids, active } = req.body;
   if (!name || !email || !password) return res.status(400).json({ error: 'Name, E-Mail und Passwort erforderlich' });
   if (password.length < 8) return res.status(400).json({ error: 'Passwort muss mindestens 8 Zeichen haben' });
-  if (!['superadmin', 'admin', 'receptionist'].includes(role)) return res.status(400).json({ error: 'Ungültige Rolle' });
+  if (!['admin', 'receptionist'].includes(role)) return res.status(400).json({ error: 'Ungültige Rolle' });
 
   const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
   if (existing) return res.status(409).json({ error: 'E-Mail bereits vergeben' });
@@ -57,10 +57,10 @@ router.post('/', ...superadmin, async (req, res) => {
 });
 
 // PUT /:id
-router.put('/:id', ...superadmin, (req, res) => {
+router.put('/:id', ...adminOnly, (req, res) => {
   const { name, email, role, location_ids, active } = req.body;
   if (!name || !email) return res.status(400).json({ error: 'Name und E-Mail erforderlich' });
-  if (!['superadmin', 'admin', 'receptionist'].includes(role)) return res.status(400).json({ error: 'Ungültige Rolle' });
+  if (!['admin', 'receptionist'].includes(role)) return res.status(400).json({ error: 'Ungültige Rolle' });
 
   const conflict = db.prepare('SELECT id FROM users WHERE email = ? AND id != ?').get(email, req.params.id);
   if (conflict) return res.status(409).json({ error: 'E-Mail bereits vergeben' });
@@ -72,7 +72,7 @@ router.put('/:id', ...superadmin, (req, res) => {
 });
 
 // POST /:id/reset-password
-router.post('/:id/reset-password', ...superadmin, async (req, res) => {
+router.post('/:id/reset-password', ...adminOnly, async (req, res) => {
   const { password } = req.body;
   if (!password || password.length < 8) return res.status(400).json({ error: 'Passwort muss mindestens 8 Zeichen haben' });
   const hash = await bcrypt.hash(password, 12);
@@ -81,10 +81,27 @@ router.post('/:id/reset-password', ...superadmin, async (req, res) => {
 });
 
 // DELETE /:id  (deactivate)
-router.delete('/:id', ...superadmin, (req, res) => {
+router.delete('/:id', ...adminOnly, (req, res) => {
   if (parseInt(req.params.id) === req.user.id) return res.status(400).json({ error: 'Eigenes Konto kann nicht deaktiviert werden' });
   db.prepare('UPDATE users SET active = 0 WHERE id = ?').run(req.params.id);
   res.json({ message: 'Benutzer deaktiviert' });
+});
+
+// DELETE /:id/permanent — endgültig löschen, nur wenn bereits deaktiviert
+router.delete('/:id/permanent', ...adminOnly, (req, res) => {
+  if (parseInt(req.params.id) === req.user.id) return res.status(400).json({ error: 'Eigenes Konto kann nicht gelöscht werden' });
+  const target = db.prepare('SELECT id, active FROM users WHERE id = ?').get(req.params.id);
+  if (!target) return res.status(404).json({ error: 'Benutzer nicht gefunden' });
+  if (target.active) return res.status(400).json({ error: 'Benutzer muss zuerst deaktiviert werden' });
+  db.prepare('DELETE FROM user_locations WHERE user_id = ?').run(req.params.id);
+  db.prepare('DELETE FROM users WHERE id = ?').run(req.params.id);
+  res.json({ message: 'Benutzer endgültig gelöscht' });
+});
+
+// POST /:id/2fa-reset — admin resets another user's 2FA (lockout recovery)
+router.post('/:id/2fa-reset', ...adminOnly, (req, res) => {
+  db.prepare('UPDATE users SET totp_secret = NULL, totp_enabled = 0, totp_backup_codes = NULL WHERE id = ?').run(req.params.id);
+  res.json({ message: '2FA zurückgesetzt' });
 });
 
 module.exports = router;

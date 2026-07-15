@@ -171,17 +171,6 @@ async function renderLabelImage({ visitorName, company, hostName, date, time, ba
   ctx.fillStyle = '#111827';
   ctx.fillText(`${date}   ${time} Uhr`, PAD, 572);
 
-  div(615);
-
-  // ── Badge number ─────────────────────────────────────────────────────────────
-  ctx.font = '24px sans-serif';
-  ctx.fillStyle = '#6b7280';
-  ctx.fillText('BADGE-NR.', PAD, 655);
-
-  ctx.font = 'bold 50px sans-serif';
-  ctx.fillStyle = '#004B87';
-  ctx.fillText(badgeNumber || '', PAD, 715);
-
   // ── Footer bar ───────────────────────────────────────────────────────────────
   ctx.fillStyle = '#f3f4f6';
   ctx.fillRect(0, H - 70, W, 70);

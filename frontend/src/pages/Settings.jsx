@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Plus, Edit2, Trash2, MapPin, Mail, Key, Save, Check, ListChecks, Users, ShieldCheck, Eye, EyeOff, Clock, GripVertical, RefreshCw } from 'lucide-react';
+import { Plus, Edit2, Trash2, MapPin, Mail, Key, Save, Check, ListChecks, Users, ShieldCheck, ShieldOff, Eye, EyeOff, Clock, GripVertical, RefreshCw, Network, Search } from 'lucide-react';
 import Modal from '../components/Modal';
 import client from '../api/client';
 import { showToast } from '../components/Layout';
@@ -9,8 +10,9 @@ import { useAuth } from '../context/AuthContext';
 function LocationsTab() {
   const { t } = useTranslation();
   const [locations, setLocations] = useState([]);
+  const [search, setSearch] = useState('');
   const [modal, setModal] = useState(null);
-  const [form, setForm] = useState({ name: '', address: '', city: '' });
+  const [form, setForm] = useState({ name: '', address: '', city: '', country: '', timezone: 'Europe/Berlin', contact_name: '', contact_email: '', contact_phone: '' });
   const [submitting, setSubmitting] = useState(false);
 
   const load = async () => {
@@ -20,7 +22,11 @@ function LocationsTab() {
 
   useEffect(() => { load(); }, []);
 
-  const openAdd = () => { setForm({ name: '', address: '', city: '' }); setModal('add'); };
+  const filtered = search
+    ? locations.filter(l => `${l.name} ${l.city || ''} ${l.country || ''}`.toLowerCase().includes(search.toLowerCase()))
+    : locations;
+
+  const openAdd = () => { setForm({ name: '', address: '', city: '', country: '', timezone: 'Europe/Berlin', contact_name: '', contact_email: '', contact_phone: '' }); setModal('add'); };
   const openEdit = (l) => { setForm(l); setModal('edit'); };
 
   const handleSubmit = async (e) => {
@@ -46,12 +52,21 @@ function LocationsTab() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-500">{locations.length} {t('settings.tabs.locations')}</p>
-        <button onClick={openAdd}
-          className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-colors">
-          <Plus size={16} /> {t('settings.locations.add')}
-        </button>
+      <div className="flex items-center justify-between gap-4">
+        <p className="text-sm text-gray-500 whitespace-nowrap">{filtered.length} / {locations.length} {t('settings.tabs.locations')}</p>
+        <div className="flex items-center gap-3">
+          {locations.length > 5 && (
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input type="text" placeholder="Suchen..." value={search} onChange={e => setSearch(e.target.value)}
+                className="pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+            </div>
+          )}
+          <button onClick={openAdd}
+            className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-colors whitespace-nowrap">
+            <Plus size={16} /> {t('settings.locations.add')}
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
@@ -61,11 +76,13 @@ function LocationsTab() {
               <th className="text-left px-5 py-3">{t('settings.locations.name')}</th>
               <th className="text-left px-5 py-3">{t('settings.locations.address')}</th>
               <th className="text-left px-5 py-3">{t('settings.locations.city')}</th>
+              <th className="text-left px-5 py-3">Land</th>
+              <th className="text-left px-5 py-3">Ansprechpartner</th>
               <th className="px-5 py-3"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {locations.map(l => (
+            {filtered.map(l => (
               <tr key={l.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-2">
@@ -75,6 +92,15 @@ function LocationsTab() {
                 </td>
                 <td className="px-5 py-4 text-gray-600">{l.address || '–'}</td>
                 <td className="px-5 py-4 text-gray-600">{l.city || '–'}</td>
+                <td className="px-5 py-4 text-gray-600">
+                  {l.country || '–'}
+                  {l.timezone && <p className="text-xs text-gray-400">{l.timezone}</p>}
+                </td>
+                <td className="px-5 py-4 text-gray-600">
+                  {l.contact_name
+                    ? <div><p>{l.contact_name}</p><p className="text-xs text-gray-400">{l.contact_email || l.contact_phone || ''}</p></div>
+                    : '–'}
+                </td>
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-1 justify-end">
                     <button onClick={() => openEdit(l)}
@@ -89,6 +115,9 @@ function LocationsTab() {
                 </td>
               </tr>
             ))}
+            {filtered.length === 0 && (
+              <tr><td colSpan={6} className="text-center py-10 text-gray-400">Keine Standorte gefunden</td></tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -111,6 +140,45 @@ function LocationsTab() {
               <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.locations.city')}</label>
               <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 value={form.city || ''} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Land</label>
+                <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  value={form.country || ''} onChange={e => setForm(f => ({ ...f, country: e.target.value }))} placeholder="Deutschland" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Zeitzone</label>
+                <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  value={form.timezone || 'Europe/Berlin'} onChange={e => setForm(f => ({ ...f, timezone: e.target.value }))}>
+                  <option value="Europe/Berlin">Europe/Berlin</option>
+                  <option value="Europe/London">Europe/London</option>
+                  <option value="Europe/Paris">Europe/Paris</option>
+                  <option value="Europe/Madrid">Europe/Madrid</option>
+                  <option value="Europe/Rome">Europe/Rome</option>
+                  <option value="Europe/Warsaw">Europe/Warsaw</option>
+                  <option value="Europe/Vilnius">Europe/Vilnius</option>
+                  <option value="Europe/Bucharest">Europe/Bucharest</option>
+                  <option value="Europe/Istanbul">Europe/Istanbul</option>
+                  <option value="America/New_York">America/New_York</option>
+                  <option value="America/Los_Angeles">America/Los_Angeles</option>
+                  <option value="Asia/Dubai">Asia/Dubai</option>
+                  <option value="Asia/Singapore">Asia/Singapore</option>
+                  <option value="Asia/Tokyo">Asia/Tokyo</option>
+                  <option value="UTC">UTC</option>
+                </select>
+              </div>
+            </div>
+            <div className="border-t border-gray-100 pt-4">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Ansprechpartner vor Ort</p>
+              <div className="space-y-3">
+                <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  value={form.contact_name || ''} onChange={e => setForm(f => ({ ...f, contact_name: e.target.value }))} placeholder="Name" />
+                <input type="email" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  value={form.contact_email || ''} onChange={e => setForm(f => ({ ...f, contact_email: e.target.value }))} placeholder="E-Mail" />
+                <input type="tel" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  value={form.contact_phone || ''} onChange={e => setForm(f => ({ ...f, contact_phone: e.target.value }))} placeholder="Telefon" />
+              </div>
             </div>
             <button type="submit" disabled={submitting}
               className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-50 text-sm">
@@ -260,7 +328,7 @@ function PurposesTab() {
 
 function UsersTab() {
   const { t } = useTranslation();
-  const ROLE_LABELS = { superadmin: t('roles.superadmin'), admin: t('roles.admin'), receptionist: t('roles.receptionist') };
+  const ROLE_LABELS = { admin: t('roles.admin'), receptionist: t('roles.receptionist') };
   const [users, setUsers] = useState([]);
   const [allLocations, setAllLocations] = useState([]);
   const [modal, setModal] = useState(null);
@@ -268,6 +336,7 @@ function UsersTab() {
   const [submitting, setSubmitting] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [resetPw, setResetPw] = useState({ userId: null, password: '' });
+  const [locSearch, setLocSearch] = useState('');
   const { user: currentUser } = useAuth();
 
   const load = async () => {
@@ -277,8 +346,8 @@ function UsersTab() {
   };
   useEffect(() => { load(); }, []);
 
-  const openAdd = () => { setForm({ name: '', email: '', password: '', role: 'receptionist', location_ids: [], active: true }); setShowPw(false); setModal('add'); };
-  const openEdit = (u) => { setForm({ ...u, location_ids: u.location_ids || [], password: '' }); setShowPw(false); setModal('edit'); };
+  const openAdd = () => { setForm({ name: '', email: '', password: '', role: 'receptionist', location_ids: [], active: true }); setShowPw(false); setLocSearch(''); setModal('add'); };
+  const openEdit = (u) => { setForm({ ...u, location_ids: u.location_ids || [], password: '' }); setShowPw(false); setLocSearch(''); setModal('edit'); };
 
   const handleSubmit = async (e) => {
     e.preventDefault(); setSubmitting(true);
@@ -296,8 +365,20 @@ function UsersTab() {
     catch (err) { showToast(err.response?.data?.error || t('common.error'), 'error'); }
   };
 
+  const handleDeletePermanent = async (id, name) => {
+    if (!window.confirm(`${name} endgültig löschen? Kann nicht rückgängig gemacht werden.`)) return;
+    try { await client.delete(`/users/${id}/permanent`); showToast('Benutzer endgültig gelöscht'); load(); }
+    catch (err) { showToast(err.response?.data?.error || t('common.error'), 'error'); }
+  };
+
   const handleUnlock = async (id) => {
     try { await client.post(`/users/${id}/unlock`); showToast('Account entsperrt'); load(); }
+    catch { showToast(t('common.error'), 'error'); }
+  };
+
+  const handle2faReset = async (id) => {
+    if (!window.confirm('2FA für diesen Benutzer zurücksetzen? Er muss es beim nächsten Login neu einrichten.')) return;
+    try { await client.post(`/users/${id}/2fa-reset`); showToast('2FA zurückgesetzt'); load(); }
     catch { showToast(t('common.error'), 'error'); }
   };
 
@@ -335,7 +416,7 @@ function UsersTab() {
                 <td className="px-5 py-4 font-medium text-gray-900">{u.name}</td>
                 <td className="px-5 py-4 text-gray-600">{u.email}</td>
                 <td className="px-5 py-4">
-                  <span className={`px-2 py-0.5 rounded text-xs font-semibold ${u.role === 'superadmin' ? 'bg-purple-100 text-purple-700' : u.role === 'admin' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
+                  <span className={`px-2 py-0.5 rounded text-xs font-semibold ${u.role === 'admin' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
                     {ROLE_LABELS[u.role]}
                   </span>
                 </td>
@@ -369,8 +450,14 @@ function UsersTab() {
                     {isLocked(u) && (
                       <button onClick={() => handleUnlock(u.id)} className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Account entsperren"><RefreshCw size={14} /></button>
                     )}
-                    {u.id !== currentUser?.id && u.active && (
-                      <button onClick={() => handleDeactivate(u.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                    {u.totp_enabled === 1 && u.id !== currentUser?.id && (
+                      <button onClick={() => handle2faReset(u.id)} className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="2FA zurücksetzen"><ShieldOff size={14} /></button>
+                    )}
+                    {u.id !== currentUser?.id && !!u.active && (
+                      <button onClick={() => handleDeactivate(u.id)} title="Deaktivieren" className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                    )}
+                    {u.id !== currentUser?.id && !u.active && (
+                      <button onClick={() => handleDeletePermanent(u.id, u.name)} title="Endgültig löschen" className="p-1.5 text-gray-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={14} /></button>
                     )}
                   </div>
                 </td>
@@ -416,8 +503,13 @@ function UsersTab() {
               {allLocations.length === 0 ? (
                 <p className="text-xs text-gray-400">{t('settings.locations.noData')}</p>
               ) : (
-                <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-40 overflow-y-auto">
-                  {allLocations.filter(l => l.active).map(loc => (
+                <>
+                  {allLocations.length > 5 && (
+                    <input type="text" placeholder="Standort suchen..." value={locSearch} onChange={e => setLocSearch(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm mb-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                  )}
+                  <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-40 overflow-y-auto">
+                  {allLocations.filter(l => l.active && `${l.name} ${l.city || ''}`.toLowerCase().includes(locSearch.toLowerCase())).map(loc => (
                     <label key={loc.id} className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer">
                       <input
                         type="checkbox"
@@ -434,7 +526,8 @@ function UsersTab() {
                       {loc.city && <span className="text-xs text-gray-400">{loc.city}</span>}
                     </label>
                   ))}
-                </div>
+                  </div>
+                </>
               )}
               <p className="text-xs text-gray-400 mt-1">
                 {(form.location_ids || []).length === 0 ? t('settings.users.noLocationFilter') : ''}
@@ -539,6 +632,136 @@ function AutoCheckoutTab() {
         <Save size={15} />
         {saving ? t('common.loading') : t('settings.autoCheckout.save')}
       </button>
+    </div>
+  );
+}
+
+function AdSyncTab() {
+  const [config, setConfig] = useState({ url: '', bindDn: '', bindPassword: '', baseDn: '', filter: '', enabled: false });
+  const [status, setStatus] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState(null);
+  const [syncError, setSyncError] = useState('');
+
+  const load = async () => {
+    const [cfgRes, statusRes] = await Promise.all([client.get('/ad-sync/config'), client.get('/ad-sync/status')]);
+    setConfig(cfgRes.data);
+    setStatus(statusRes.data);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await client.put('/ad-sync/config', config);
+      setConfig(res.data);
+      showToast('Konfiguration gespeichert');
+    } catch (err) { showToast(err.response?.data?.error || 'Fehler', 'error'); }
+    finally { setSaving(false); }
+  };
+
+  const handleSyncNow = async () => {
+    setSyncing(true);
+    setSyncError('');
+    setSyncResult(null);
+    try {
+      const res = await client.post('/ad-sync/sync');
+      setSyncResult(res.data);
+      const statusRes = await client.get('/ad-sync/status');
+      setStatus(statusRes.data);
+      showToast('Synchronisierung abgeschlossen');
+    } catch (err) {
+      setSyncError(err.response?.data?.error || 'Synchronisierung fehlgeschlagen');
+    } finally { setSyncing(false); }
+  };
+
+  if (loading) return <div className="py-12 text-center text-gray-400">Lädt...</div>;
+
+  const inp = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500';
+
+  return (
+    <div className="space-y-6 max-w-lg">
+      <div>
+        <h3 className="text-sm font-semibold text-gray-900 mb-1">Gastgeber-Synchronisierung (Active Directory)</h3>
+        <p className="text-xs text-gray-500">Gastgeber automatisch aus dem Active Directory der abat AG übernehmen. Nur Konten mit passendem Filter werden synchronisiert.</p>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium text-gray-900">Automatischer täglicher Sync</p>
+          <button
+            onClick={() => setConfig(c => ({ ...c, enabled: !c.enabled }))}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${config.enabled ? 'bg-primary-600' : 'bg-gray-200'}`}
+          >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${config.enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+          </button>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">LDAP-Server-URL</label>
+          <input className={inp} value={config.url} onChange={e => setConfig(c => ({ ...c, url: e.target.value }))} placeholder="ldaps://ad.abat.de:636" />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Bind-DN</label>
+          <input className={inp} value={config.bindDn} onChange={e => setConfig(c => ({ ...c, bindDn: e.target.value }))} placeholder="cn=svc-visitormgmt,ou=Service Accounts,dc=abat,dc=de" />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Bind-Passwort</label>
+          <input type="password" className={inp} value={config.bindPassword} onChange={e => setConfig(c => ({ ...c, bindPassword: e.target.value }))} placeholder="Leer lassen um bestehendes zu behalten" autoComplete="new-password" />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Base-DN</label>
+          <input className={inp} value={config.baseDn} onChange={e => setConfig(c => ({ ...c, baseDn: e.target.value }))} placeholder="ou=abat AG,dc=abat,dc=de" />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">LDAP-Filter</label>
+          <input className={inp} value={config.filter} onChange={e => setConfig(c => ({ ...c, filter: e.target.value }))} placeholder="(&(objectClass=user)(objectCategory=person))" />
+          <p className="text-xs text-gray-400 mt-1">Über Base-DN und Filter auf abat AG einschränken (z.B. passende OU).</p>
+        </div>
+
+        <button onClick={handleSave} disabled={saving}
+          className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors disabled:opacity-50">
+          <Save size={15} />
+          {saving ? 'Speichert...' : 'Konfiguration speichern'}
+        </button>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-900">Letzter Sync</p>
+            <p className="text-xs text-gray-500">
+              {status?.last_sync_at ? new Date(status.last_sync_at).toLocaleString('de-DE') : 'Noch nie'}
+            </p>
+          </div>
+          <button onClick={handleSyncNow} disabled={syncing}
+            className="flex items-center gap-2 bg-gray-700 hover:bg-gray-800 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm whitespace-nowrap">
+            <RefreshCw size={15} className={syncing ? 'animate-spin' : ''} />
+            {syncing ? 'Synchronisiert...' : 'Jetzt synchronisieren'}
+          </button>
+        </div>
+
+        {status?.last_sync_result && !syncResult && (
+          <div className="text-xs text-gray-500 flex gap-4">
+            <span>{status.last_sync_result.created} neu</span>
+            <span>{status.last_sync_result.updated} aktualisiert</span>
+            <span>{status.last_sync_result.deactivated} deaktiviert</span>
+          </div>
+        )}
+        {syncError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-xs">{syncError}</div>
+        )}
+        {syncResult && (
+          <div className="text-xs text-gray-600 flex gap-4">
+            <span>{syncResult.created} neu</span>
+            <span>{syncResult.updated} aktualisiert</span>
+            <span>{syncResult.deactivated} deaktiviert</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -652,7 +875,7 @@ const SECURITY_OPTIONS = [
 function EmailTab() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const isSuperadmin = user?.role === 'superadmin';
+  const isAdmin = user?.role === 'admin';
 
   const EMPTY = { smtp_host: '', smtp_port: '', smtp_user: '', smtp_pass: '', from_email: '', from_name: '', smtp_security: 'starttls' };
   const [form, setForm] = useState(EMPTY);
@@ -714,13 +937,13 @@ function EmailTab() {
         <div className="grid grid-cols-3 gap-3">
           <div className="col-span-2">
             <label className="block text-xs font-medium text-gray-500 mb-1">Host</label>
-            {isSuperadmin
+            {isAdmin
               ? <input className={inp} value={form.smtp_host} onChange={e => set('smtp_host', e.target.value)} placeholder="smtp.gmail.com" />
               : <div className={inpRO}>{form.smtp_host || <span className="italic text-gray-400">–</span>}</div>}
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Port</label>
-            {isSuperadmin
+            {isAdmin
               ? <input className={inp} value={form.smtp_port} onChange={e => set('smtp_port', e.target.value)} placeholder="587" />
               : <div className={inpRO}>{form.smtp_port || '–'}</div>}
           </div>
@@ -728,12 +951,12 @@ function EmailTab() {
 
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Benutzername</label>
-          {isSuperadmin
+          {isAdmin
             ? <input className={inp} value={form.smtp_user} onChange={e => set('smtp_user', e.target.value)} placeholder="user@firma.de" autoComplete="off" />
             : <div className={inpRO}>{form.smtp_user || <span className="italic text-gray-400">–</span>}</div>}
         </div>
 
-        {isSuperadmin && (
+        {isAdmin && (
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Passwort</label>
             <input className={inp} type="password" value={form.smtp_pass}
@@ -753,7 +976,7 @@ function EmailTab() {
           {SECURITY_OPTIONS.map(opt => (
             <label key={opt.value}
               className={`flex items-start gap-3 p-3 rounded-xl border-2 transition-all ${
-                isSuperadmin ? 'cursor-pointer' : 'cursor-default'
+                isAdmin ? 'cursor-pointer' : 'cursor-default'
               } ${
                 form.smtp_security === opt.value
                   ? 'border-primary-500 bg-primary-50'
@@ -761,8 +984,8 @@ function EmailTab() {
               }`}>
               <input type="radio" name="smtp_security" value={opt.value}
                 checked={form.smtp_security === opt.value}
-                onChange={() => isSuperadmin && set('smtp_security', opt.value)}
-                disabled={!isSuperadmin}
+                onChange={() => isAdmin && set('smtp_security', opt.value)}
+                disabled={!isAdmin}
                 className="mt-0.5 text-primary-600" />
               <div>
                 <p className="text-sm font-semibold text-gray-800">{opt.label}
@@ -782,20 +1005,20 @@ function EmailTab() {
         <h3 className="text-sm font-semibold text-gray-700">Absender</h3>
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Absender-E-Mail</label>
-          {isSuperadmin
+          {isAdmin
             ? <input className={inp} value={form.from_email} onChange={e => set('from_email', e.target.value)} placeholder="noreply@firma.de" />
             : <div className={inpRO}>{form.from_email || <span className="italic text-gray-400">–</span>}</div>}
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Absendername <span className="text-gray-400">(wird im E-Mail-Client angezeigt)</span></label>
-          {isSuperadmin
+          {isAdmin
             ? <input className={inp} value={form.from_name} onChange={e => set('from_name', e.target.value)} placeholder="Besucherverwaltung Meine Firma" />
             : <div className={inpRO}>{form.from_name || <span className="italic text-gray-400">–</span>}</div>}
           <p className="text-xs text-gray-400 mt-1">Beispiel: <span className="font-mono">Besucherverwaltung Meine Firma &lt;noreply@firma.de&gt;</span></p>
         </div>
       </div>
 
-      {isSuperadmin && (
+      {isAdmin && (
         <>
           <hr className="border-gray-100" />
           <button onClick={handleSave} disabled={saving}
@@ -829,36 +1052,83 @@ function EmailTab() {
   );
 }
 
+function TwoFactorSection() {
+  const { user, updateUser } = useAuth();
+  const navigate = useNavigate();
+  const [disabling, setDisabling] = useState(false);
+  const [pw, setPw] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleDisable = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      await client.post('/auth/2fa/disable', { password: pw });
+      updateUser({ totp_enabled: false });
+      setDisabling(false);
+      setPw('');
+      showToast('2FA deaktiviert');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Fehler');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="border-t border-gray-100 pt-6 space-y-3">
+      <h3 className="text-sm font-semibold text-gray-700">Zwei-Faktor-Authentifizierung</h3>
+      <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            {user?.totp_enabled
+              ? <ShieldCheck size={18} className="text-green-600 flex-shrink-0" />
+              : <ShieldOff size={18} className="text-gray-400 flex-shrink-0" />}
+            <div>
+              <p className="text-sm font-medium text-gray-900">{user?.totp_enabled ? '2FA aktiv' : '2FA nicht eingerichtet'}</p>
+              {user?.role === 'admin' && !user?.totp_enabled && (
+                <p className="text-xs text-red-500 mt-0.5">Für Admin-Konten verpflichtend</p>
+              )}
+            </div>
+          </div>
+          {user?.totp_enabled ? (
+            <button onClick={() => setDisabling(d => !d)}
+              className="text-sm font-medium text-red-600 hover:text-red-700 transition-colors">
+              Deaktivieren
+            </button>
+          ) : (
+            <button onClick={() => navigate('/2fa-setup')}
+              className="text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors">
+              Jetzt einrichten
+            </button>
+          )}
+        </div>
+        {disabling && (
+          <form onSubmit={handleDisable} className="mt-4 pt-4 border-t border-gray-100 space-y-2">
+            {error && <div className="text-xs text-red-600">{error}</div>}
+            <label className="block text-xs font-medium text-gray-500">Passwort zur Bestätigung</label>
+            <div className="flex gap-2">
+              <input type="password" className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                value={pw} onChange={e => setPw(e.target.value)} required autoFocus />
+              <button type="submit" disabled={loading}
+                className="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-semibold px-4 rounded-lg transition-colors">
+                {loading ? '...' : 'Bestätigen'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function PasswordTab() {
   const { t } = useTranslation();
-  const { user } = useAuth();
   const [form, setForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showDemo, setShowDemo] = useState(true);
-  const [savingDemo, setSavingDemo] = useState(false);
-
-  useEffect(() => {
-    if (!['superadmin', 'admin'].includes(user?.role)) return;
-    client.get('/settings/system').then(r => {
-      setShowDemo(r.data.show_demo_credentials !== 'false');
-    }).catch(() => {});
-  }, [user]);
-
-  const handleDemoToggle = async () => {
-    const next = !showDemo;
-    setShowDemo(next);
-    setSavingDemo(true);
-    try {
-      await client.put('/settings/system', { show_demo_credentials: next ? 'true' : 'false' });
-      showToast(next ? 'Demo-Zugangsdaten eingeblendet' : 'Demo-Zugangsdaten ausgeblendet');
-    } catch {
-      setShowDemo(!next);
-      showToast(t('common.error'), 'error');
-    } finally {
-      setSavingDemo(false);
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -907,25 +1177,7 @@ function PasswordTab() {
         </button>
       </form>
 
-      {['superadmin', 'admin'].includes(user?.role) && (
-        <div className="border-t border-gray-100 pt-6 space-y-3">
-          <h3 className="text-sm font-semibold text-gray-700">Login-Seite</h3>
-          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-medium text-gray-900">Demo-Zugangsdaten anzeigen</p>
-              <p className="text-xs text-gray-500 mt-0.5">Zeigt Demo-Credentials auf der Admin-Login-Seite an. Im Produktivbetrieb deaktivieren.</p>
-            </div>
-            <button
-              type="button"
-              onClick={handleDemoToggle}
-              disabled={savingDemo}
-              className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${showDemo ? 'bg-primary-600' : 'bg-gray-200'}`}
-            >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${showDemo ? 'translate-x-6' : 'translate-x-1'}`} />
-            </button>
-          </div>
-        </div>
-      )}
+      <TwoFactorSection />
     </div>
   );
 }
@@ -938,8 +1190,9 @@ export default function Settings() {
   const TABS = [
     { key: 'locations', label: t('settings.tabs.locations'), icon: MapPin },
     { key: 'purposes', label: t('settings.tabs.purposes'), icon: ListChecks },
-    { key: 'users', label: t('settings.tabs.users'), icon: Users, superadminOnly: true },
-    { key: 'auto-checkout', label: t('settings.tabs.autoCheckout'), icon: Clock, superadminOnly: true },
+    { key: 'users', label: t('settings.tabs.users'), icon: Users, adminOnly: true },
+    { key: 'auto-checkout', label: t('settings.tabs.autoCheckout'), icon: Clock, adminOnly: true },
+    { key: 'ad-sync', label: 'Gastgeber-Sync', icon: Network, adminOnly: true },
     { key: 'gdpr', label: t('settings.tabs.gdpr'), icon: ShieldCheck },
     { key: 'email', label: t('settings.tabs.email'), icon: Mail },
     { key: 'password', label: t('settings.tabs.password'), icon: Key },
@@ -954,7 +1207,7 @@ export default function Settings() {
 
       {/* Tabs */}
       <div className="flex flex-wrap gap-1 border-b border-gray-200">
-        {TABS.filter(tab => !tab.superadminOnly || user?.role === 'superadmin').map(({ key, label, icon: Icon }) => (
+        {TABS.filter(tab => !tab.adminOnly || user?.role === 'admin').map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => setActiveTab(key)}
             className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all -mb-px
               ${activeTab === key
@@ -971,8 +1224,9 @@ export default function Settings() {
       <div>
         {activeTab === 'locations' && <LocationsTab />}
         {activeTab === 'purposes' && <PurposesTab />}
-        {activeTab === 'users' && user?.role === 'superadmin' && <UsersTab />}
-        {activeTab === 'auto-checkout' && user?.role === 'superadmin' && <AutoCheckoutTab />}
+        {activeTab === 'users' && user?.role === 'admin' && <UsersTab />}
+        {activeTab === 'auto-checkout' && user?.role === 'admin' && <AutoCheckoutTab />}
+        {activeTab === 'ad-sync' && user?.role === 'admin' && <AdSyncTab />}
         {activeTab === 'gdpr' && <GdprTab />}
         {activeTab === 'email' && <EmailTab />}
         {activeTab === 'password' && <PasswordTab />}

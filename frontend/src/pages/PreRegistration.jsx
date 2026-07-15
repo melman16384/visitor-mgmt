@@ -135,7 +135,7 @@ function PreRegForm({ onSubmit, hosts, locations, purposes, loading, defaultHost
 export default function PreRegistration() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const isSuperadmin = user?.role === 'superadmin';
+  const isAdmin = user?.role === 'admin';
   const [items, setItems] = useState([]);
   const [hosts, setHosts] = useState([]);
   const [locations, setLocations] = useState([]);
@@ -295,7 +295,7 @@ export default function PreRegistration() {
                     )}
                   </td>
                   <td className="px-6 py-4">
-                    {isSuperadmin ? (
+                    {isAdmin ? (
                       <button
                         onClick={() => handleDelete(item.id, `${item.visitor_first_name} ${item.visitor_last_name}`)}
                         title={t('common.delete')}

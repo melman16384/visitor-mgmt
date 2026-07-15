@@ -6,51 +6,63 @@ import { format, parseISO, subDays } from 'date-fns';
 import { de } from 'date-fns/locale';
 import client from '../api/client';
 import { showToast } from '../components/Layout';
+import { useAuth } from '../context/AuthContext';
 
 export default function Reports() {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const defaultFrom = format(subDays(new Date(), 30), 'yyyy-MM-dd');
   const defaultTo = format(new Date(), 'yyyy-MM-dd');
 
   const [from, setFrom] = useState(defaultFrom);
   const [to, setTo] = useState(defaultTo);
+  const [locationId, setLocationId] = useState('');
+  const [locations, setLocations] = useState([]);
   const [data, setData] = useState(null);
-  const [visits, setVisits] = useState([]);
+  const [allVisits, setAllVisits] = useState([]);
+  const [hostFilter, setHostFilter] = useState('');
+  const [nameFilter, setNameFilter] = useState('');
+  const [checkinDateFilter, setCheckinDateFilter] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isAdmin) client.get('/locations').then(r => setLocations(r.data)).catch(() => {});
+  }, [isAdmin]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      // Use daily report with range
-      const [dailyRes, exportRes] = await Promise.all([
-        client.get('/reports/daily', { params: { date: to } }),
-        client.get('/reports/export', { params: { from, to, format: 'json' } }),
-      ]);
+      const params = { from, to, format: 'json' };
+      if (isAdmin && locationId) params.location_id = locationId;
+      const exportRes = await client.get('/reports/export', { params });
 
       // Calculate stats from export data
-      const allVisits = exportRes.data;
+      const fetchedVisits = exportRes.data;
 
-      // Group by day for chart
+      // Group by day for chart (local calendar day, not UTC)
       const byDay = {};
-      allVisits.forEach(v => {
-        const day = v.checked_in_at?.split('T')[0];
-        if (day) byDay[day] = (byDay[day] || 0) + 1;
+      fetchedVisits.forEach(v => {
+        if (!v.checked_in_at) return;
+        const day = format(new Date(v.checked_in_at), 'yyyy-MM-dd');
+        byDay[day] = (byDay[day] || 0) + 1;
       });
       const chartData = Object.entries(byDay).sort(([a], [b]) => a.localeCompare(b)).map(([date, count]) => ({ date, count }));
 
-      setData({ total: allVisits.length, chart: chartData });
-      setVisits(allVisits.slice(0, 50));
+      setData({ total: fetchedVisits.length, chart: chartData });
+      setAllVisits(fetchedVisits);
     } catch {
       showToast(t('reports.loadError'), 'error');
     } finally {
       setLoading(false);
     }
-  }, [from, to]);
+  }, [from, to, locationId, isAdmin]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
   const handleExportCSV = () => {
-    const url = `/api/reports/export?from=${from}&to=${to}&format=csv`;
+    const locParam = isAdmin && locationId ? `&location_id=${locationId}` : '';
+    const url = `/api/reports/export?from=${from}&to=${to}&format=csv${locParam}`;
     const a = document.createElement('a');
     a.href = url;
     a.download = `besucher-export-${from}-${to}.csv`;
@@ -73,6 +85,16 @@ export default function Reports() {
     try { return format(parseISO(d), 'dd.MM', { locale: de }); } catch { return d; }
   };
 
+  const hostOptions = [...new Set(allVisits.map(v => v.host_name).filter(Boolean))].sort();
+
+  const filteredVisits = allVisits.filter(v => {
+    if (hostFilter && v.host_name !== hostFilter) return false;
+    if (nameFilter && !`${v.first_name} ${v.last_name}`.toLowerCase().includes(nameFilter.toLowerCase())) return false;
+    if (checkinDateFilter && v.checked_in_at && format(new Date(v.checked_in_at), 'yyyy-MM-dd') !== checkinDateFilter) return false;
+    return true;
+  });
+  const visibleVisits = filteredVisits.slice(0, 50);
+
   return (
     <div className="p-6 space-y-5">
       <div className="flex items-center justify-between">
@@ -80,11 +102,13 @@ export default function Reports() {
           <h1 className="text-2xl font-bold text-gray-900">{t('reports.title')}</h1>
           <p className="text-sm text-gray-500 mt-0.5">{t('reports.subtitle')}</p>
         </div>
-        <button onClick={handleExportCSV}
-          className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2.5 rounded-xl text-sm shadow-sm transition-colors">
-          <Download size={18} />
-          {t('reports.csvExport')}
-        </button>
+        {isAdmin && (
+          <button onClick={handleExportCSV}
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2.5 rounded-xl text-sm shadow-sm transition-colors">
+            <Download size={18} />
+            {t('reports.csvExport')}
+          </button>
+        )}
       </div>
 
       {/* Date range */}
@@ -100,6 +124,16 @@ export default function Reports() {
             <input type="date" value={to} onChange={e => setTo(e.target.value)}
               className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
           </div>
+          {isAdmin && (
+            <div>
+              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Standort</label>
+              <select value={locationId} onChange={e => setLocationId(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                <option value="">Alle Standorte</option>
+                {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+              </select>
+            </div>
+          )}
           <button onClick={loadData} disabled={loading}
             className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50">
             {loading ? t('common.loading') : t('reports.analyze')}
@@ -155,9 +189,25 @@ export default function Reports() {
 
       {/* Visits table */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-semibold text-gray-900">{t('reports.tableTitle')}</h2>
-          <span className="text-sm text-gray-500">{visits.length} {t('reports.tableMax')}</span>
+          <span className="text-sm text-gray-500">{visibleVisits.length} / {filteredVisits.length} {t('reports.tableMax')}</span>
+        </div>
+        <div className="px-6 py-3 border-b border-gray-100 flex flex-wrap items-center gap-3 bg-gray-50/50">
+          <input type="text" placeholder="Name des Besuchers..." value={nameFilter} onChange={e => setNameFilter(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+          <select value={hostFilter} onChange={e => setHostFilter(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+            <option value="">Alle Gastgeber</option>
+            {hostOptions.map(h => <option key={h} value={h}>{h}</option>)}
+          </select>
+          <input type="date" value={checkinDateFilter} onChange={e => setCheckinDateFilter(e.target.value)}
+            title="Nach Check-in-Datum filtern"
+            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+          {(nameFilter || hostFilter || checkinDateFilter) && (
+            <button onClick={() => { setNameFilter(''); setHostFilter(''); setCheckinDateFilter(''); }}
+              className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Filter zurücksetzen</button>
+          )}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -176,11 +226,11 @@ export default function Reports() {
                 <tr><td colSpan={6} className="text-center py-16">
                   <div className="inline-block w-6 h-6 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
                 </td></tr>
-              ) : visits.length === 0 ? (
+              ) : visibleVisits.length === 0 ? (
                 <tr><td colSpan={6} className="text-center py-16 text-gray-400">
                   {t('reports.noData')}
                 </td></tr>
-              ) : visits.map(v => (
+              ) : visibleVisits.map(v => (
                 <tr key={v.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-3">
                     <p className="font-medium text-gray-900">{v.first_name} {v.last_name}</p>

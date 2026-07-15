@@ -119,12 +119,6 @@ export default function KioskManual() {
               <p className="text-2xl font-bold text-abat-blau font-mono">{result.visitor.abat_id}</p>
             </div>
           )}
-          {result?.visit?.badge_number && (
-            <div>
-              <p className="text-sm text-abat-grau">{t('badgeNumber')}</p>
-              <p className="text-lg font-semibold text-abat-dunkelgrau">{result.visit.badge_number}</p>
-            </div>
-          )}
         </div>
         {result?.visit?.host_name_free
           ? <p className="kiosk-fade-up kiosk-delay-4 text-abat-grau text-sm">{t('hostNotifiedManual')}</p>

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 export default function VisitorCheckinForm({ onSubmit, hosts, purposes, loading }) {
   const { t } = useTranslation();
   const [form, setForm] = useState({
-    first_name: '', last_name: '', email: '', phone: '', company: '',
+    first_name: '', last_name: '', email: '', company: '',
     host_id: '', purpose: '', notes: '', nda_signed: false,
   });
   const [hostManualName, setHostManualName] = useState('');
@@ -40,17 +40,10 @@ export default function VisitorCheckinForm({ onSubmit, hosts, purposes, loading 
             onChange={e => set('last_name', e.target.value)} required placeholder="Mustermann" />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t('visitors.form.email')}</label>
-          <input type="email" className={inp} value={form.email}
-            onChange={e => set('email', e.target.value)} placeholder="max@firma.de" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t('visitors.form.phone')}</label>
-          <input type="tel" className={inp} value={form.phone}
-            onChange={e => set('phone', e.target.value)} placeholder="+49 30 ..." />
-        </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">{t('visitors.form.email')}</label>
+        <input type="email" className={inp} value={form.email}
+          onChange={e => set('email', e.target.value)} placeholder="max@firma.de" />
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">{t('visitors.form.company')}</label>

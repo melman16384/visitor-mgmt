@@ -19,19 +19,28 @@ router.get('/:id', authenticate, (req, res) => {
 
 // POST /
 router.post('/', authenticate, (req, res) => {
-  const { name, address, city } = req.body;
+  const { name, address, city, country, timezone, contact_name, contact_email, contact_phone } = req.body;
   if (!name) return res.status(400).json({ error: 'Name erforderlich' });
 
-  const result = db.prepare('INSERT INTO locations (name, address, city) VALUES (?, ?, ?)').run(name, address || null, city || null);
+  const result = db.prepare(`
+    INSERT INTO locations (name, address, city, country, timezone, contact_name, contact_email, contact_phone)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(name, address || null, city || null, country || null, timezone || 'Europe/Berlin', contact_name || null, contact_email || null, contact_phone || null);
   const loc = db.prepare('SELECT * FROM locations WHERE id = ?').get(result.lastInsertRowid);
   res.status(201).json(loc);
 });
 
 // PUT /:id
 router.put('/:id', authenticate, (req, res) => {
-  const { name, address, city, active } = req.body;
-  db.prepare('UPDATE locations SET name = ?, address = ?, city = ?, active = COALESCE(?, active) WHERE id = ?')
-    .run(name, address || null, city || null, active !== undefined ? (active ? 1 : 0) : null, req.params.id);
+  const { name, address, city, country, timezone, contact_name, contact_email, contact_phone, active } = req.body;
+  db.prepare(`
+    UPDATE locations SET name = ?, address = ?, city = ?, country = ?, timezone = ?, contact_name = ?, contact_email = ?, contact_phone = ?,
+      active = COALESCE(?, active)
+    WHERE id = ?
+  `).run(
+    name, address || null, city || null, country || null, timezone || 'Europe/Berlin', contact_name || null, contact_email || null, contact_phone || null,
+    active !== undefined ? (active ? 1 : 0) : null, req.params.id
+  );
 
   const loc = db.prepare('SELECT * FROM locations WHERE id = ?').get(req.params.id);
   res.json(loc);

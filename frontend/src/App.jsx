@@ -1,9 +1,10 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { KioskLangProvider } from './context/KioskLangContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
+import TwoFactorSetup from './pages/TwoFactorSetup';
 import Dashboard from './pages/Dashboard';
 import Visitors from './pages/Visitors';
 import KioskStart from './pages/KioskStart';
@@ -23,8 +24,12 @@ import HostPortal from './pages/HostPortal';
 import NotFound from './pages/NotFound';
 
 function ProtectedRoute({ children }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const location = useLocation();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user?.role === 'admin' && !user?.totp_enabled && location.pathname !== '/2fa-setup') {
+    return <Navigate to="/2fa-setup" replace />;
+  }
   return children;
 }
 
@@ -40,6 +45,7 @@ function AppRoutes() {
       <Route path="/kiosk/checkout" element={<KioskLangProvider><KioskCheckout /></KioskLangProvider>} />
       <Route path="/kiosk/manual" element={<KioskLangProvider><KioskManual /></KioskLangProvider>} />
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/2fa-setup" element={<ProtectedRoute><TwoFactorSetup /></ProtectedRoute>} />
       <Route path="/evacuation/print" element={<ProtectedRoute><EvacuationPrint /></ProtectedRoute>} />
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<Dashboard />} />

@@ -70,8 +70,8 @@ router.put('/:id', authenticate, (req, res) => {
   res.json(host);
 });
 
-// PUT /:id/set-password — superadmin only
-router.put('/:id/set-password', authenticate, requireRole(['superadmin']), (req, res) => {
+// PUT /:id/set-password — admin only
+router.put('/:id/set-password', authenticate, requireRole(['admin']), (req, res) => {
   const { password } = req.body;
   if (!password || password.length < 8) {
     return res.status(400).json({ error: 'Passwort muss mindestens 8 Zeichen lang sein' });

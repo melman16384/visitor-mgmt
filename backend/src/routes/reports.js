@@ -4,10 +4,28 @@ const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Empfang sieht nur die eigenen Standorte; Admin sieht alles oder kann per
+// location_id-Query-Param gezielt einen Standort filtern.
+function locationScope(req) {
+  const isAdmin = req.user.role === 'admin';
+  if (!isAdmin) {
+    const ids = req.user.location_ids;
+    if (ids && ids.length > 0) {
+      return { sql: `AND v.location_id IN (${ids.map(() => '?').join(',')})`, params: ids };
+    }
+    return { sql: '', params: [] };
+  }
+  if (req.query.location_id) {
+    return { sql: 'AND v.location_id = ?', params: [req.query.location_id] };
+  }
+  return { sql: '', params: [] };
+}
+
 // GET /daily?date=YYYY-MM-DD
 router.get('/daily', authenticate, (req, res) => {
   const { date } = req.query;
   const targetDate = date || new Date().toISOString().split('T')[0];
+  const scope = locationScope(req);
 
   const rows = db.prepare(`
     SELECT v.*, vi.first_name, vi.last_name, vi.company, vi.email,
@@ -16,9 +34,9 @@ router.get('/daily', authenticate, (req, res) => {
     JOIN visitors vi ON v.visitor_id = vi.id
     LEFT JOIN hosts h ON v.host_id = h.id
     LEFT JOIN locations l ON v.location_id = l.id
-    WHERE date(v.checked_in_at) = ?
+    WHERE date(v.checked_in_at) = ? ${scope.sql}
     ORDER BY v.checked_in_at ASC
-  `).all(targetDate);
+  `).all(targetDate, ...scope.params);
 
   const stats = {
     total: rows.length,
@@ -38,6 +56,7 @@ router.get('/monthly', authenticate, (req, res) => {
   const from = `${year}-${monthStr}-01`;
   const lastDay = new Date(year, month, 0).getDate();
   const to = `${year}-${monthStr}-${lastDay}`;
+  const scope = locationScope(req);
 
   const visits = db.prepare(`
     SELECT v.*, vi.first_name, vi.last_name, vi.company,
@@ -45,30 +64,30 @@ router.get('/monthly', authenticate, (req, res) => {
     FROM visits v
     JOIN visitors vi ON v.visitor_id = vi.id
     LEFT JOIN hosts h ON v.host_id = h.id
-    WHERE date(v.checked_in_at) BETWEEN ? AND ?
-  `).all(from, to);
+    WHERE date(v.checked_in_at) BETWEEN ? AND ? ${scope.sql}
+  `).all(from, to, ...scope.params);
 
   const topHosts = db.prepare(`
     SELECT h.name, COUNT(*) as count
     FROM visits v
     JOIN hosts h ON v.host_id = h.id
-    WHERE date(v.checked_in_at) BETWEEN ? AND ?
+    WHERE date(v.checked_in_at) BETWEEN ? AND ? ${scope.sql}
     GROUP BY h.id ORDER BY count DESC LIMIT 5
-  `).all(from, to);
+  `).all(from, to, ...scope.params);
 
   const topCompanies = db.prepare(`
     SELECT vi.company, COUNT(*) as count
     FROM visits v
     JOIN visitors vi ON v.visitor_id = vi.id
-    WHERE date(v.checked_in_at) BETWEEN ? AND ? AND vi.company IS NOT NULL
+    WHERE date(v.checked_in_at) BETWEEN ? AND ? AND vi.company IS NOT NULL ${scope.sql}
     GROUP BY vi.company ORDER BY count DESC LIMIT 5
-  `).all(from, to);
+  `).all(from, to, ...scope.params);
 
   const daily = db.prepare(`
     SELECT date(checked_in_at) as date, COUNT(*) as count
-    FROM visits WHERE date(checked_in_at) BETWEEN ? AND ?
+    FROM visits v WHERE date(checked_in_at) BETWEEN ? AND ? ${scope.sql}
     GROUP BY date ORDER BY date ASC
-  `).all(from, to);
+  `).all(from, to, ...scope.params);
 
   res.json({
     year, month,
@@ -88,7 +107,7 @@ router.get('/evacuation', authenticate, (req, res) => {
   const locParams = ids && ids.length > 0 ? ids : [];
 
   const rows = db.prepare(`
-    SELECT v.id, v.badge_number, v.checked_in_at, v.purpose,
+    SELECT v.id, v.checked_in_at, v.purpose,
            vi.first_name, vi.last_name, vi.company,
            COALESCE(h.name, v.host_name_free) as host_name,
            l.id as location_id, l.name as location_name, l.address as location_address
@@ -116,14 +135,18 @@ router.get('/evacuation', authenticate, (req, res) => {
   });
 });
 
-// GET /export?from=&to=&format=csv
+// GET /export?from=&to=&format=csv — CSV-Download nur für Admin, JSON-Vorschau für alle (Standort-gescopt)
 router.get('/export', authenticate, (req, res) => {
   const { from, to, format = 'csv' } = req.query;
+  if (format === 'csv' && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Export nur für Admin verfügbar' });
+  }
   const fromDate = from || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
   const toDate = to || new Date().toISOString().split('T')[0];
+  const scope = locationScope(req);
 
   const rows = db.prepare(`
-    SELECT v.id, v.badge_number, v.purpose, v.status, v.notes,
+    SELECT v.id, v.purpose, v.status, v.notes,
            v.checked_in_at, v.checked_out_at,
            vi.first_name, vi.last_name, vi.company, vi.email,
            COALESCE(h.name, v.host_name_free) as host_name,
@@ -132,19 +155,19 @@ router.get('/export', authenticate, (req, res) => {
     JOIN visitors vi ON v.visitor_id = vi.id
     LEFT JOIN hosts h ON v.host_id = h.id
     LEFT JOIN locations l ON v.location_id = l.id
-    WHERE date(v.checked_in_at) BETWEEN ? AND ?
+    WHERE date(v.checked_in_at) BETWEEN ? AND ? ${scope.sql}
     ORDER BY v.checked_in_at DESC
-  `).all(fromDate, toDate);
+  `).all(fromDate, toDate, ...scope.params);
 
   if (format === 'csv') {
-    const headers = ['ID', 'Badge-Nr', 'Vorname', 'Nachname', 'Firma', 'E-Mail',
+    const headers = ['ID', 'Vorname', 'Nachname', 'Firma', 'E-Mail',
       'Gastgeber', 'Standort', 'Zweck', 'Status',
       'Eingecheckt', 'Ausgecheckt', 'Notizen'];
 
     const csvLines = [headers.join(';')];
     for (const r of rows) {
       csvLines.push([
-        r.id, r.badge_number, r.first_name, r.last_name, r.company || '', r.email || '',
+        r.id, r.first_name, r.last_name, r.company || '', r.email || '',
         r.host_name || '', r.location_name || '', r.purpose || '',
         r.status === 'active' ? 'Anwesend' : 'Ausgecheckt',
         r.checked_in_at ? new Date(r.checked_in_at).toLocaleString('de-DE') : '',

@@ -14,7 +14,7 @@ Vollständiges, webbasiertes Besucherverwaltungssystem für Unternehmen mit Reac
 | Bereich | Technologien |
 |---|---|
 | **Frontend** | React 19, Vite 8, Tailwind CSS 4, Mulish Font |
-| **Backend** | Node.js (≥ 20), Express.js 5, better-sqlite3 12, JWT (+ optionales TOTP-2FA) |
+| **Backend** | Node.js (≥ 20), Express.js 5, better-sqlite3 12, JWT (+ TOTP-2FA, verpflichtend für Admin-Konten), ldapts (AD-Sync) |
 | **Sicherheit** | helmet, express-rate-limit, bcryptjs (cost 12) |
 | **Services** | PDFKit (Badge), Nodemailer (E-Mail), html5-qrcode (Scanner) |
 | **Infra** | Nginx, pm2, Cloudflare, SQLite (WAL-Modus) |
@@ -25,9 +25,11 @@ Vollständiges, webbasiertes Besucherverwaltungssystem für Unternehmen mit Reac
 - Kiosk-Modus (Deutsch / Englisch) für Tablets am Empfang
 - Vorregistrierungen mit QR-Code-Versand per E-Mail (Einzel- & Gruppenregistrierung)
 - **Host-Portal** — Gastgeber können sich einloggen, Besucher einsehen und Vorregistrierungen selbst erstellen
-- **Auto-Checkout** täglich um 19:00 Uhr (Uhrzeit konfigurierbar in Superadmin-Einstellungen)
+- **Zwei-Faktor-Authentifizierung (TOTP)** — verpflichtend für Admin-Konten, mit Backup-Codes und Account-Lockout nach 5 Fehlversuchen
+- **Gastgeber-Synchronisierung (AD-Sync)** — Gastgeber automatisch aus Active Directory/LDAP übernehmen, täglich oder manuell
+- **Auto-Checkout** täglich um 19:00 Uhr (Uhrzeit konfigurierbar in den Admin-Einstellungen)
 - **Audit-Log** — 90 Tage Aufbewahrung, Download als Tagesprotokoll-Datei, Compliance-Bericht als CSV
-- Badge-Druck als PDF (A6) und Etikettendrucker (Brother QL-820NWB)
+- Badge-Druck als PDF (A6)
 - Evakuierungsliste in Echtzeit, nach Standort gruppiert
 - Standortbasierte Zugriffskontrolle für Empfangs-Benutzer
 - GDPR-konforme automatische Datenanonymisierung
@@ -61,9 +63,12 @@ Vollständige Installationsanleitung: [docs/installation.md](docs/installation.m
 | `/hosts` | Gastgeberverwaltung | Ja |
 | `/preregistrations` | Vorregistrierungen mit QR-Code | Ja |
 | `/evacuation` | Evakuierungsliste (Echtzeit) | Ja |
-| `/reports` | Berichte und CSV-Export | Ja (admin+) |
-| `/settings` | Konfiguration, Benutzer, E-Mail | Ja (admin+) |
-| `/audit-log` | Audit-Log & Compliance-Bericht | Ja (superadmin) |
+| `/reports` | Berichte; CSV-Export nur Admin | Ja |
+| `/settings` | Konfiguration, Benutzer, E-Mail, AD-Sync | Ja (admin) |
+| `/audit-log` | Audit-Log & Compliance-Bericht | Ja (admin) |
+| `/2fa-setup` | Erzwungene 2FA-Einrichtung für Admins | Ja |
 | `/kiosk` | Selbst-Eincheck-Kiosk | Nein |
 | `/host/login` | Gastgeber-Portal Anmeldung | Nein |
 | `/host` | Gastgeber-Portal | Host-Token |
+
+Rollen: `admin` (voller Zugriff, 2FA verpflichtend) / `receptionist` (standortgefiltert) / `host` (nur eigenes Portal). Die frühere Rolle `superadmin` wurde entfernt — siehe [docs/dokumentation.md](docs/dokumentation.md#12-zugangsdaten--benutzerrollen).

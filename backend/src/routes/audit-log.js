@@ -6,15 +6,15 @@ const { authenticate, requireRole } = require('../middleware/auth');
 const { listAvailableDates, readDay, logFilePath } = require('../services/audit-log');
 
 const router = express.Router();
-const superadmin = [authenticate, requireRole(['superadmin'])];
+const adminOnly = [authenticate, requireRole(['admin'])];
 
 // GET /available-dates — list of dates with existing log files
-router.get('/available-dates', ...superadmin, (req, res) => {
+router.get('/available-dates', ...adminOnly, (req, res) => {
   res.json(listAvailableDates());
 });
 
 // GET /download?date=YYYY-MM-DD — download raw .log file
-router.get('/download', ...superadmin, (req, res) => {
+router.get('/download', ...adminOnly, (req, res) => {
   const date = req.query.date;
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return res.status(400).json({ error: 'Ungültiges Datum' });
@@ -27,7 +27,7 @@ router.get('/download', ...superadmin, (req, res) => {
 });
 
 // GET /compliance-report?from=YYYY-MM-DD&to=YYYY-MM-DD — CSV download
-router.get('/compliance-report', ...superadmin, (req, res) => {
+router.get('/compliance-report', ...adminOnly, (req, res) => {
   const { from, to } = req.query;
   if (!from || !to || !/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
     return res.status(400).json({ error: 'Ungültige Datumsangaben (YYYY-MM-DD erforderlich)' });
@@ -40,7 +40,7 @@ router.get('/compliance-report', ...superadmin, (req, res) => {
       vi.first_name, vi.last_name, vi.company, vi.email, vi.abat_id,
       h.name as host_name,
       l.name as location_name,
-      v.purpose, v.badge_number, v.status,
+      v.purpose, v.status,
       v.checked_in_at, v.checked_out_at, v.notes
     FROM visits v
     JOIN visitors vi ON v.visitor_id = vi.id
@@ -80,14 +80,14 @@ router.get('/compliance-report', ...superadmin, (req, res) => {
   lines.push('=== BESUCHSPROTOKOLL ===');
   lines.push([
     'abat-ID', 'Vorname', 'Nachname', 'Unternehmen', 'E-Mail',
-    'Gastgeber', 'Standort', 'Zweck', 'Badge-Nr.',
+    'Gastgeber', 'Standort', 'Zweck',
     'Eingecheckt', 'Ausgecheckt', 'Status', 'Notizen'
   ].map(esc).join(';'));
 
   for (const v of visits) {
     lines.push([
       v.abat_id, v.first_name, v.last_name, v.company, v.email,
-      v.host_name, v.location_name, v.purpose, v.badge_number,
+      v.host_name, v.location_name, v.purpose,
       fmtDt(v.checked_in_at), fmtDt(v.checked_out_at), v.status, v.notes
     ].map(esc).join(';'));
   }

@@ -76,8 +76,8 @@ export default function Sidebar() {
   ];
 
   const adminItems = [
-    { to: '/settings', label: t('nav.settings'), icon: Settings, roles: ['superadmin', 'admin'] },
-    { to: '/audit-log', label: t('nav.auditLog'), icon: ScrollText, roles: ['superadmin'] },
+    { to: '/settings', label: t('nav.settings'), icon: Settings, roles: ['admin'] },
+    { to: '/audit-log', label: t('nav.auditLog'), icon: ScrollText, roles: ['admin'] },
   ];
 
   return (
@@ -116,7 +116,7 @@ export default function Sidebar() {
         </div>
 
         {/* Admin items */}
-        {user && (user.role === 'superadmin' || user.role === 'admin') && (
+        {user && user.role === 'admin' && (
           <div className="mt-4 pt-4 border-t border-white/10 px-2 space-y-1">
             {!collapsed && <p className="px-3 text-xs text-abat-grau uppercase tracking-wider mb-2">{t('nav.administration')}</p>}
             {adminItems.filter(item => !item.roles || item.roles.includes(user.role)).map(({ to, label, icon: Icon }) => (

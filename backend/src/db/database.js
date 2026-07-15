@@ -32,6 +32,11 @@ function initializeDatabase() {
       name TEXT NOT NULL,
       address TEXT,
       city TEXT,
+      country TEXT,
+      timezone TEXT DEFAULT 'Europe/Berlin',
+      contact_name TEXT,
+      contact_email TEXT,
+      contact_phone TEXT,
       active INTEGER DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -52,7 +57,6 @@ function initializeDatabase() {
       first_name TEXT NOT NULL,
       last_name TEXT NOT NULL,
       email TEXT,
-      phone TEXT,
       company TEXT,
       photo_path TEXT,
       nda_signed INTEGER DEFAULT 0,
@@ -186,6 +190,18 @@ if (!preregInfo.find(c => c.name === 'group_id')) {
   db.exec('ALTER TABLE preregistrations ADD COLUMN group_id TEXT');
 }
 
+// Add country/contact columns to locations if missing
+const locationsInfo = db.prepare("PRAGMA table_info(locations)").all();
+for (const col of ['country', 'contact_name', 'contact_email', 'contact_phone']) {
+  if (!locationsInfo.find(c => c.name === col)) {
+    db.exec(`ALTER TABLE locations ADD COLUMN ${col} TEXT`);
+  }
+}
+if (!locationsInfo.find(c => c.name === 'timezone')) {
+  db.exec("ALTER TABLE locations ADD COLUMN timezone TEXT DEFAULT 'Europe/Berlin'");
+  db.exec("UPDATE locations SET timezone = 'Europe/Berlin' WHERE timezone IS NULL");
+}
+
 // Add columns to hosts if missing
 const hostsInfo = db.prepare("PRAGMA table_info(hosts)").all();
 if (!hostsInfo.find(c => c.name === 'password_hash')) {
@@ -209,6 +225,18 @@ if (!usersInfo.find(c => c.name === 'failed_login_attempts')) {
 if (!usersInfo.find(c => c.name === 'locked_until')) {
   db.exec('ALTER TABLE users ADD COLUMN locked_until DATETIME');
 }
+if (!usersInfo.find(c => c.name === 'totp_secret')) {
+  db.exec('ALTER TABLE users ADD COLUMN totp_secret TEXT');
+}
+if (!usersInfo.find(c => c.name === 'totp_enabled')) {
+  db.exec('ALTER TABLE users ADD COLUMN totp_enabled INTEGER DEFAULT 0');
+}
+if (!usersInfo.find(c => c.name === 'totp_backup_codes')) {
+  db.exec('ALTER TABLE users ADD COLUMN totp_backup_codes TEXT');
+}
+
+// superadmin-Rolle entfernt — bestehende superadmin-User werden zu admin
+db.exec("UPDATE users SET role = 'admin' WHERE role = 'superadmin'");
 
 // Create initial admin user from env if no users exist yet
 const userCount = db.prepare('SELECT COUNT(*) as c FROM users').get();
@@ -218,7 +246,7 @@ if (userCount.c === 0) {
   const name     = process.env.ADMIN_NAME     || 'Administrator';
   const hash = bcrypt.hashSync(password, 12);
   db.prepare('INSERT INTO users (name, email, password_hash, role, active) VALUES (?, ?, ?, ?, 1)')
-    .run(name, email, hash, 'superadmin');
+    .run(name, email, hash, 'admin');
   console.log(`[init] Admin-Benutzer erstellt: ${email}`);
 }
 
@@ -231,6 +259,9 @@ if (visitorsInfoBl.find(c => c.name === 'blacklisted')) {
 }
 if (visitorsInfoBl.find(c => c.name === 'blacklist_reason')) {
   db.exec('ALTER TABLE visitors DROP COLUMN blacklist_reason');
+}
+if (visitorsInfoBl.find(c => c.name === 'phone')) {
+  db.exec('ALTER TABLE visitors DROP COLUMN phone');
 }
 const visitsInfoPark = db.prepare("PRAGMA table_info(visits)").all();
 if (visitsInfoPark.find(c => c.name === 'license_plate')) {
